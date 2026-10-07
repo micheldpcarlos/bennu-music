@@ -78,21 +78,34 @@ void SpircHandler::subscribeToMercury() {
       subscriptionLambda);
 }
 
+static bool validTrackURI(const std::string& uri) {
+  return uri.size() == 36 && uri.compare(0, 14, "spotify:track:") == 0 &&
+      uri.find_first_not_of("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", 14) == std::string::npos;
+}
+
 void SpircHandler::loadTrackFromURI(const std::string& uri) {
-  if (uri.size() != 36 || uri.compare(0, 14, "spotify:track:") != 0 ||
-      uri.find_first_not_of("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", 14) != std::string::npos)
-    throw std::invalid_argument("Invalid Spotify track URI");
-  TrackReference reference;
-  reference.uri = uri; reference.context = uri; reference.queued = false;
-  reference.decodeURI();
-  if (reference.gid.size() > 16) throw std::invalid_argument("Track ID exceeds 128 bits");
-  reference.gid.insert(reference.gid.begin(), 16 - reference.gid.size(), 0);
-  std::vector<TrackReference> tracks{reference};
+  loadTracks({uri}, 0, uri);
+}
+
+void SpircHandler::loadTracks(const std::vector<std::string>& uris, size_t index, const std::string& contextUri) {
+  if (uris.empty() || uris.size() > 500 || index >= uris.size()) throw std::invalid_argument("Invalid track list");
+  std::vector<TrackReference> tracks;
+  tracks.reserve(uris.size());
+  for (const auto& uri : uris) {
+    if (!validTrackURI(uri)) throw std::invalid_argument("Invalid Spotify track URI");
+    TrackReference reference;
+    reference.uri = uri; reference.context = contextUri; reference.queued = false;
+    reference.decodeURI();
+    if (reference.gid.size() > 16) throw std::invalid_argument("Track ID exceeds 128 bits");
+    reference.gid.insert(reference.gid.begin(), 16 - reference.gid.size(), 0);
+    tracks.push_back(std::move(reference));
+  }
+  std::string context = contextUri.empty() ? uris[index] : contextUri;
   Frame frame = Frame_init_zero;
   frame.has_typ = true; frame.typ = MessageType_kMessageTypeLoad;
   frame.has_state = true;
-  frame.state.context_uri = const_cast<char*>(uri.c_str());
-  frame.state.has_playing_track_index = true; frame.state.playing_track_index = 0;
+  frame.state.context_uri = const_cast<char*>(context.c_str());
+  frame.state.has_playing_track_index = true; frame.state.playing_track_index = static_cast<uint32_t>(index);
   frame.state.has_position_ms = true; frame.state.position_ms = 0;
   frame.has_position = true; frame.position = 0;
   frame.state.track.funcs.encode = &TrackReference::pbEncodeTrackList;
@@ -100,6 +113,14 @@ void SpircHandler::loadTrackFromURI(const std::string& uri) {
   // Reuse the normal load path on the engine dispatch thread, with owned decoded data.
   auto encoded = pbEncode(Frame_fields, &frame);
   handleFrame(encoded);
+}
+
+void SpircHandler::seekTo(uint32_t positionMs) {
+  // Same steps as a remote Seek frame, on the engine dispatch thread.
+  this->trackPlayer->seekMs(positionMs);
+  playbackState->updatePositionMs(positionMs);
+  notify();
+  sendEvent(EventType::SEEK, (int)positionMs);
 }
 
 void SpircHandler::notifyAudioEnded() {

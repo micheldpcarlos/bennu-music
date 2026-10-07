@@ -4,7 +4,8 @@
 #ifdef CSPOT_IOS_APP
 #include "PlayerBridge.h"
 #include "auth/AuthStore.h"
-#include "CatalogSearch.h"
+#include "Catalog.h"
+#include "CatalogProbe.h"
 #endif
 #include <functional>   // for __base, function
 #include <map>          // for operator!=, map, map<>::mapped_type
@@ -307,22 +308,33 @@ int main(int argc, char** argv) {
           default: return false;
         }
       });
-      auto catalog = std::make_shared<ipad_player::CatalogSearch>(ctx);
-      ipad_player::setCatalogHandlers(
-          [catalog](std::string query, uint64_t request) {
-            std::thread([catalog, query, request]() {
-              try { ipad_player::publishCatalog(request, catalog->search(query)); }
-              catch (...) {
-                std::fprintf(stderr, "CATALOG: search worker failed\n");
-                ipad_player::publishCatalog(request, "{\"message\":\"Busca indisponível.\",\"tracks\":[]}");
-              }
-            }).detach();
-          },
-          [weakHandler](std::string uri) {
+      auto catalog = std::make_shared<ipad_player::Catalog>(ctx);
+      ipad_player::setCatalogService([catalog](const std::string& kind, const std::string& argument, const ipad_player::CatalogPublish& publish) {
+        if (kind == "search") catalog->search(argument, publish);
+        else if (kind == "album") catalog->album(argument, publish);
+        else if (kind == "artist") catalog->artist(argument, publish);
+        else if (kind == "playlist") catalog->playlist(argument, publish);
+        else if (kind == "collection") catalog->collection(publish);
+        else if (kind == "recent") catalog->recent(publish);
+        else if (kind == "profile") catalog->profile(publish);
+        else if (kind == "context") catalog->context(argument, publish);
+        else if (kind == "tracks") {
+          std::vector<std::string> uris; std::string current;
+          for (char c : argument) { if (c == ',') { if (!current.empty()) uris.push_back(current); current.clear(); } else current += c; }
+          if (!current.empty()) uris.push_back(current);
+          catalog->tracks(uris, publish);
+        } else throw std::invalid_argument("unknown catalog request");
+      });
+      ipad_player::setPlaybackHandlers(
+          [weakHandler](const std::vector<std::string>& uris, size_t index, const std::string& context) {
             auto active = weakHandler.lock(); if (!active) return false;
-            active->loadTrackFromURI(uri); return true;
+            active->loadTracks(uris, index, context); return true;
+          },
+          [weakHandler](uint32_t positionMs) {
+            auto active = weakHandler.lock(); if (active) active->seekTo(positionMs);
           });
       ipad_player_ready();
+      ipad_player::runCatalogProbeIfRequested(ctx);
 #endif
 
       // If we wanted to handle multiple devices, we would halt this loop

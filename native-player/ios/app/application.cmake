@@ -11,7 +11,7 @@ add_custom_command(OUTPUT "${IPAD_APP_OBJECT}"
       -fobjc-arc -fblocks
       -c "${IPAD_APP_DIR}/AppMain.mm" -o "${IPAD_APP_OBJECT}"
     DEPENDS "${IPAD_APP_DIR}/AppMain.mm" "${IPAD_APP_DIR}/AppAudioSession.inc"
-      "${CMAKE_CURRENT_SOURCE_DIR}/auth/QRSetup.h" "${IPAD_APP_DIR}/CatalogPicker.h" "${IPAD_APP_DIR}/NowPlaying.inc" "${CMAKE_CURRENT_SOURCE_DIR}/PlayerBridge.h"
+      "${IPAD_APP_DIR}/ui/MainTabController.h" "${CMAKE_CURRENT_SOURCE_DIR}/PlayerBridge.h"
     VERBATIM)
 set_source_files_properties("${IPAD_APP_OBJECT}"
     PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
@@ -60,13 +60,22 @@ set_source_files_properties("${IPAD_QR_OBJECT}" PROPERTIES GENERATED TRUE EXTERN
 target_sources(ipad-media-app PRIVATE "${IPAD_QR_OBJECT}"
  "${CMAKE_CURRENT_SOURCE_DIR}/auth/OAuthLogin.cpp")
 
-set(IPAD_CATALOG_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/CatalogPicker.o")
-add_custom_command(OUTPUT "${IPAD_CATALOG_OBJECT}"
- COMMAND /usr/bin/clang -target armv7-apple-ios9.0 -marm
- -isysroot "${CMAKE_OSX_SYSROOT}" -fobjc-arc -fblocks
- -c "${IPAD_APP_DIR}/CatalogPicker.m" -o "${IPAD_CATALOG_OBJECT}"
- DEPENDS "${IPAD_APP_DIR}/CatalogPicker.m" "${IPAD_APP_DIR}/CatalogPicker.h"
- "${CMAKE_CURRENT_SOURCE_DIR}/PlayerBridge.h" VERBATIM)
-set_source_files_properties("${IPAD_CATALOG_OBJECT}" PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
-target_sources(ipad-media-app PRIVATE "${IPAD_CATALOG_OBJECT}"
- "${CMAKE_CURRENT_SOURCE_DIR}/CatalogSearch.cpp")
+# Objective-C screens: one object per app/*.m, all depending on the shared headers.
+file(GLOB IPAD_UI_SOURCES "${IPAD_APP_DIR}/ui/*.m")
+set(IPAD_UI_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/PlayerBridge.h" "${CMAKE_CURRENT_SOURCE_DIR}/auth/QRSetup.h")
+file(GLOB IPAD_UI_HEADER_FILES "${IPAD_APP_DIR}/ui/*.h")
+foreach(IPAD_UI_SOURCE ${IPAD_UI_SOURCES})
+  get_filename_component(IPAD_UI_NAME "${IPAD_UI_SOURCE}" NAME_WE)
+  set(IPAD_UI_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/ui-${IPAD_UI_NAME}.o")
+  add_custom_command(OUTPUT "${IPAD_UI_OBJECT}"
+    COMMAND /usr/bin/clang -target armv7-apple-ios9.0 -marm
+    -isysroot "${CMAKE_OSX_SYSROOT}" -fobjc-arc -fblocks -Os -Wall -Wno-unused-parameter
+    -c "${IPAD_UI_SOURCE}" -o "${IPAD_UI_OBJECT}"
+    DEPENDS "${IPAD_UI_SOURCE}" ${IPAD_UI_HEADER_FILES} ${IPAD_UI_HEADERS} VERBATIM)
+  set_source_files_properties("${IPAD_UI_OBJECT}" PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
+  target_sources(ipad-media-app PRIVATE "${IPAD_UI_OBJECT}")
+endforeach()
+target_sources(ipad-media-app PRIVATE
+ "${CMAKE_CURRENT_SOURCE_DIR}/Catalog.cpp"
+ "${CMAKE_CURRENT_SOURCE_DIR}/SpclientClient.cpp"
+ "${CMAKE_CURRENT_SOURCE_DIR}/CatalogProbe.cpp")

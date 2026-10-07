@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "PlayerBridge.h"
+#include <nlohmann/json.hpp>
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <deque>
 #include <exception>
+#include <map>
 #include <mutex>
+#include <random>
 #include <string>
+#include <thread>
 #include <utility>
 
 namespace {
@@ -14,11 +18,19 @@ std::mutex bridgeMutex;
 IPadPlayerSnapshot state{};
 std::deque<int> commands;
 std::function<bool(int)> control;
-std::function<void(std::string, uint64_t)> searchCatalog;
-std::function<bool(std::string)> selectTrack;
-std::string searchQuery, selectedURI, catalogJSON;
-uint64_t catalogRequest = 0, catalogRevision = 0;
-bool catalogBusy = false;
+std::function<bool(const std::vector<std::string>&, size_t, const std::string&)> playTracks;
+std::function<void(uint32_t)> seekTrack;
+std::function<void(const std::string&, const std::string&, const ipad_player::CatalogPublish&)> catalogService;
+struct PendingPlay { std::vector<std::string> uris; size_t index = 0; std::string context; bool valid = false; };
+PendingPlay pendingPlay;
+bool pendingSeek = false; uint32_t pendingSeekMs = 0;
+std::string queueJSON = "{\"uris\":[],\"index\":0,\"context\":\"\"}";
+uint64_t queueRevision = 1;
+
+struct CatalogEntry { std::string json; uint64_t revision = 0; bool done = false; uint64_t created = 0; };
+std::mutex catalogMutex;
+std::map<uint64_t, CatalogEntry> catalogResults;
+uint64_t catalogNextId = 1, catalogRevision = 1;
 
 using Clock = std::chrono::steady_clock;
 Clock::time_point positionAt = Clock::now();
@@ -35,36 +47,74 @@ void freezePosition() { state.positionMs = currentPosition(); positionAt = Clock
 template <size_t N> void copyText(char (&output)[N], const char* input) {
   std::snprintf(output, N, "%s", input ? input : "");
 }
+void resetHandlersLocked() {
+  commands.clear(); control = nullptr; playTracks = nullptr; seekTrack = nullptr;
+  pendingPlay = PendingPlay{}; pendingSeek = false;
 }
-int ipad_player_search(const char* query) {
-  if (!query || !*query || std::string(query).size() > 256) return 0;
-  std::lock_guard<std::mutex> lock(bridgeMutex);
-  if (state.state != IPadReady || !searchCatalog || catalogBusy) return 0;
-  searchQuery = query; catalogBusy = true; ++catalogRequest;
-  catalogJSON = "{\"message\":\"Searching Spotify…\",\"busy\":true,\"tracks\":[]}";
-  ++catalogRevision; return 1;
+bool validTrack(const std::string& uri) {
+  return uri.size() == 36 && uri.compare(0, 14, "spotify:track:") == 0 &&
+      uri.find_first_not_of("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", 14) == std::string::npos;
 }
-int ipad_player_select_track(const char* input) {
-  if (!input) return 0;
-  std::string uri(input);
-  if (uri.size() != 36 || uri.compare(0, 14, "spotify:track:") != 0 ||
-      uri.find_first_not_of("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", 14) != std::string::npos) return 0;
-  std::lock_guard<std::mutex> lock(bridgeMutex);
-  if (state.state != IPadReady || !selectTrack || !selectedURI.empty()) return 0;
-  selectedURI = uri; return 1;
+void publishCatalog(uint64_t id, const std::string& json, bool done) {
+  std::lock_guard<std::mutex> lock(catalogMutex);
+  auto found = catalogResults.find(id);
+  if (found == catalogResults.end()) return;  // forgotten by the UI
+  found->second.json = json; found->second.done = done; found->second.revision = ++catalogRevision;
 }
-uint64_t ipad_player_catalog_snapshot(char* output, uint32_t capacity) {
+}
+
+uint64_t ipad_catalog_request(const char* kind, const char* argument) {
+  if (!kind || !*kind) return 0;
+  std::string kindText(kind), argumentText(argument ? argument : "");
+  if (kindText.size() > 32 || argumentText.size() > 20000) return 0;
+  std::function<void(const std::string&, const std::string&, const ipad_player::CatalogPublish&)> service;
+  {
+    std::lock_guard<std::mutex> lock(bridgeMutex);
+    if (state.state != IPadReady || !catalogService) return 0;
+    service = catalogService;
+  }
+  uint64_t id;
+  {
+    std::lock_guard<std::mutex> lock(catalogMutex);
+    id = catalogNextId++;
+    if (catalogResults.size() >= 24) catalogResults.erase(catalogResults.begin());
+    CatalogEntry entry; entry.created = id; entry.json = "{\"loading\":true}"; entry.revision = ++catalogRevision;
+    catalogResults[id] = entry;
+  }
+  std::thread([service, id, kindText, argumentText]() {
+    try {
+      service(kindText, argumentText, [id](const std::string& json, bool done) { publishCatalog(id, json, done); });
+    } catch (const std::exception& error) {
+      std::fprintf(stderr, "CATALOG: %s request failed: %s\n", kindText.c_str(), error.what());
+      publishCatalog(id, std::string("{\"error\":\"") + "Could not load from Spotify." + "\",\"loading\":false}", true);
+    } catch (...) {
+      std::fprintf(stderr, "CATALOG: %s request failed\n", kindText.c_str());
+      publishCatalog(id, "{\"error\":\"Could not load from Spotify.\",\"loading\":false}", true);
+    }
+  }).detach();
+  return id;
+}
+uint64_t ipad_catalog_poll(uint64_t request, uint64_t since, char* output, uint32_t capacity, int* done) {
   if (!output || !capacity) return 0;
-  std::lock_guard<std::mutex> lock(bridgeMutex);
-  if (catalogJSON.size() >= capacity) { output[0] = 0; return 0; }
-  std::snprintf(output, capacity, "%s", catalogJSON.c_str()); return catalogRevision;
+  std::lock_guard<std::mutex> lock(catalogMutex);
+  auto found = catalogResults.find(request);
+  if (found == catalogResults.end() || found->second.revision <= since) return 0;
+  if (found->second.json.size() >= capacity) { output[0] = 0; return 0; }
+  std::snprintf(output, capacity, "%s", found->second.json.c_str());
+  if (done) *done = found->second.done ? 1 : 0;
+  return found->second.revision;
 }
+void ipad_catalog_forget(uint64_t request) {
+  std::lock_guard<std::mutex> lock(catalogMutex);
+  catalogResults.erase(request);
+}
+
 void ipad_player_snapshot(IPadPlayerSnapshot* output) {
   if (!output) return;
   std::lock_guard<std::mutex> lock(bridgeMutex);
   *output = state;
   output->positionMs = currentPosition();
-  output->pending = static_cast<int>(commands.size());
+  output->pending = static_cast<int>(commands.size()) + (pendingPlay.valid ? 1 : 0);
 }
 int ipad_player_command(int command) {
   if (command < IPadTogglePause || command > IPadNext) return 0;
@@ -73,11 +123,55 @@ int ipad_player_command(int command) {
   commands.push_back(command);
   return 1;
 }
+int ipad_player_play_tracks(const char* json) {
+  if (!json) return 0;
+  PendingPlay play;
+  try {
+    auto document = nlohmann::json::parse(json);
+    if (!document.is_object() || !document.count("uris") || !document["uris"].is_array()) return 0;
+    for (const auto& item : document["uris"]) {
+      if (!item.is_string()) continue;
+      auto uri = item.get<std::string>();
+      if (validTrack(uri)) play.uris.push_back(uri);
+      if (play.uris.size() >= 500) break;
+    }
+    if (play.uris.empty()) return 0;
+    play.index = document.count("index") && document["index"].is_number_unsigned() ? document["index"].get<size_t>() : 0;
+    if (play.index >= play.uris.size()) play.index = 0;
+    play.context = document.count("context") && document["context"].is_string() ? document["context"].get<std::string>() : "";
+    if (play.context.size() > 200) play.context.clear();
+    if (document.count("shuffle") && document["shuffle"].is_boolean() && document["shuffle"].get<bool>() && play.uris.size() > 1) {
+      std::swap(play.uris[0], play.uris[play.index]);
+      std::shuffle(play.uris.begin() + 1, play.uris.end(), std::mt19937(static_cast<unsigned>(Clock::now().time_since_epoch().count())));
+      play.index = 0;
+    }
+  } catch (...) { return 0; }
+  play.valid = true;
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  if (state.state != IPadReady || !playTracks) return 0;
+  pendingPlay = std::move(play);
+  return 1;
+}
+int ipad_player_seek(uint32_t positionMs) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  if (!seekTrack || state.state != IPadReady || !state.hasTrack) return 0;
+  if (state.durationMs && positionMs > state.durationMs) positionMs = state.durationMs;
+  pendingSeek = true; pendingSeekMs = positionMs;
+  // Optimistic position so the scrubber does not jump back while the engine seeks.
+  state.positionMs = positionMs; positionAt = Clock::now();
+  return 1;
+}
+uint64_t ipad_player_queue(char* output, uint32_t capacity) {
+  if (!output || !capacity) return 0;
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  if (queueJSON.size() >= capacity) { output[0] = 0; return 0; }
+  std::snprintf(output, capacity, "%s", queueJSON.c_str());
+  return queueRevision;
+}
+
 void ipad_player_waiting() {
   std::lock_guard<std::mutex> lock(bridgeMutex);
-  state = {}; state.paused = 1; commands.clear(); control = nullptr;
-  selectedURI.clear(); searchQuery.clear(); searchCatalog = nullptr; selectTrack = nullptr;
-  catalogBusy = false; ++catalogRequest; catalogJSON.clear(); ++catalogRevision;
+  state = {}; state.paused = 1; resetHandlersLocked(); catalogService = nullptr;
   positionAt = Clock::now();
 }
 void ipad_player_connecting() {
@@ -87,9 +181,7 @@ void ipad_player_connecting() {
 void ipad_player_failed(const char* error) {
   std::lock_guard<std::mutex> lock(bridgeMutex);
   freezePosition(); state.state = IPadFailed; state.paused = 1;
-  state.loading = 0; commands.clear(); control = nullptr;
-  selectedURI.clear(); searchQuery.clear(); searchCatalog = nullptr; selectTrack = nullptr;
-  catalogBusy = false; ++catalogRequest; catalogJSON.clear(); ++catalogRevision;
+  state.loading = 0; resetHandlersLocked(); catalogService = nullptr;
   copyText(state.error, error);
 }
 void ipad_player_ready() {
@@ -126,42 +218,42 @@ void setControlHandler(std::function<bool(int)> handler) {
   std::lock_guard<std::mutex> lock(bridgeMutex);
   control = std::move(handler);
 }
+void setPlaybackHandlers(std::function<bool(const std::vector<std::string>&, size_t, const std::string&)> play,
+                         std::function<void(uint32_t)> seek) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  playTracks = std::move(play); seekTrack = std::move(seek);
+}
+void setCatalogService(std::function<void(const std::string&, const std::string&, const CatalogPublish&)> service) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  catalogService = std::move(service);
+}
 void clearControlHandler() {
   std::lock_guard<std::mutex> lock(bridgeMutex);
-  commands.clear(); control = nullptr;
-  selectedURI.clear(); searchQuery.clear(); searchCatalog = nullptr; selectTrack = nullptr;
-  catalogBusy = false; ++catalogRequest; catalogJSON.clear(); ++catalogRevision;
-}
-void setCatalogHandlers(std::function<void(std::string, uint64_t)> search,
-    std::function<bool(std::string)> play) {
-  std::lock_guard<std::mutex> lock(bridgeMutex);
-  searchCatalog = std::move(search); selectTrack = std::move(play);
-}
-void publishCatalog(uint64_t request, const std::string& json) {
-  std::lock_guard<std::mutex> lock(bridgeMutex);
-  if (request != catalogRequest || !catalogBusy) return;
-  catalogJSON = json.size() < 65536 ? json : "{\"message\":\"Response is too large.\",\"tracks\":[]}";
-  catalogBusy = false; ++catalogRevision;
+  resetHandlersLocked(); catalogService = nullptr;
 }
 void dispatchPending() {
-  std::string query, uri;
-  uint64_t request = 0;
-  std::function<void(std::string, uint64_t)> search;
-  std::function<bool(std::string)> play;
+  PendingPlay play; bool seek = false; uint32_t seekMs = 0;
+  std::function<bool(const std::vector<std::string>&, size_t, const std::string&)> playHandler;
+  std::function<void(uint32_t)> seekHandler;
   {
     std::lock_guard<std::mutex> lock(bridgeMutex);
-    query.swap(searchQuery); uri.swap(selectedURI);
-    request = catalogRequest; search = searchCatalog; play = selectTrack;
+    if (pendingPlay.valid) { play = std::move(pendingPlay); pendingPlay = PendingPlay{}; }
+    if (pendingSeek) { seek = true; seekMs = pendingSeekMs; pendingSeek = false; }
+    playHandler = playTracks; seekHandler = seekTrack;
   }
-  if (!query.empty() && search) {
-    try { search(query, request); }
-    catch (...) { publishCatalog(request, "{\"message\":\"Search is unavailable.\",\"tracks\":[]}"); }
-  }
-  if (!uri.empty() && play) {
-    try { if (!play(uri)) std::fprintf(stderr, "CATALOG: selected track unavailable\n"); }
+  if (play.valid && playHandler) {
+    try {
+      if (playHandler(play.uris, play.index, play.context)) {
+        nlohmann::json queue{{"uris", play.uris}, {"index", play.index}, {"context", play.context}};
+        std::lock_guard<std::mutex> lock(bridgeMutex);
+        queueJSON = queue.dump(); ++queueRevision;
+      } else std::fprintf(stderr, "CATALOG: local track load unavailable\n");
+    } catch (const std::exception& error) { std::fprintf(stderr, "CATALOG: local track load failed: %s\n", error.what()); }
     catch (...) { std::fprintf(stderr, "CATALOG: local track load failed\n"); }
   }
-
+  if (seek && seekHandler) {
+    try { seekHandler(seekMs); } catch (...) { std::fprintf(stderr, "UI: seek failed\n"); }
+  }
   for (;;) {
     int command;
     std::function<bool(int)> handler;

@@ -57,6 +57,10 @@ class SpircHandler {
   void updatePositionMs(uint32_t position);
   void setRemoteVolume(int volume);
   void loadTrackFromURI(const std::string& uri);
+  // Load a list of track URIs as the play queue, starting at index. contextUri names the
+  // album/playlist/collection the list came from (shown to remote controllers).
+  void loadTracks(const std::vector<std::string>& uris, size_t index, const std::string& contextUri);
+  void seekTo(uint32_t positionMs);
   std::shared_ptr<cspot::TrackQueue> getTrackQueue() { return trackQueue; }
 
   void disconnect();

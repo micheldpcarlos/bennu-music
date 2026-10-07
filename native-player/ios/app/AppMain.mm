@@ -5,7 +5,8 @@
 #include <atomic>
 #include <cstdio>
 #include <exception>
-#include "NowPlaying.inc"
+#import "ui/MainTabController.h"
+#include "../PlayerBridge.h"
 
 int ipad_cspot_engine_main(int argc, char** argv);
 
@@ -75,8 +76,7 @@ static void startEngine() {
   std::fprintf(stderr, "APP: launched; log=%s\n", log.fileSystemRepresentation);
 
   self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-  NowPlayingController* controller = [[NowPlayingController alloc] init];
-  self.window.rootViewController = controller;
+  self.window.rootViewController = [[MainTabController alloc] init];
   [self.window makeKeyAndVisible];
 
   NSNotificationCenter* center = NSNotificationCenter.defaultCenter;
@@ -87,6 +87,10 @@ static void startEngine() {
   [center addObserver:self selector:@selector(accountPaired:)
       name:@"IPadAccountPaired" object:nil];
   startEngine();
+  return YES;
+}
+- (BOOL)application:(UIApplication*)application openURL:(NSURL*)url sourceApplication:(NSString*)source annotation:(id)annotation {
+  std::fprintf(stderr, "APP: opened via url scheme\n");
   return YES;
 }
 - (void)applicationDidEnterBackground:(UIApplication*)application {

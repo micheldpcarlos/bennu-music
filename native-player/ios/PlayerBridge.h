@@ -11,11 +11,26 @@ typedef struct IPadPlayerSnapshot {
   uint32_t positionMs, durationMs;
   char title[256], artist[256], album[256], artwork[512], trackId[128], error[256];
 } IPadPlayerSnapshot;
-int ipad_player_search(const char* query);
-int ipad_player_select_track(const char* uri);
-uint64_t ipad_player_catalog_snapshot(char* output, uint32_t capacity);
+
+// --- Catalog (browsing data). Requests run on worker threads; the UI polls for results. ---
+// kind: "search" (query), "album" (id), "artist" (id), "playlist" (id), "collection", "recent",
+// "profile", "context" (uri), "tracks" (comma-separated uris). Returns 0 when the player is not ready.
+uint64_t ipad_catalog_request(const char* kind, const char* argument);
+// Copies the latest JSON for a request when its revision is newer than `since`. Returns the new
+// revision, or 0 if nothing changed / unknown request / buffer too small. *done is set when final.
+uint64_t ipad_catalog_poll(uint64_t request, uint64_t since, char* output, uint32_t capacity, int* done);
+void ipad_catalog_forget(uint64_t request);
+
+// --- Playback ---
 void ipad_player_snapshot(IPadPlayerSnapshot* output);
 int ipad_player_command(int command);
+// json: {"uris":[...], "index":n, "context":"spotify:album:...", "shuffle":false}
+int ipad_player_play_tracks(const char* json);
+int ipad_player_seek(uint32_t positionMs);
+// Current queue as JSON {"uris":[...],"index":n,"context":"..."} (what was last loaded locally).
+uint64_t ipad_player_queue(char* output, uint32_t capacity);
+
+// --- Engine -> bridge notifications ---
 void ipad_player_waiting(void);
 void ipad_player_connecting(void);
 void ipad_player_failed(const char* error);
@@ -30,12 +45,15 @@ void ipad_player_inactive(void);
 }
 #include <functional>
 #include <string>
+#include <vector>
 namespace ipad_player {
 // Install and drain on the engine's packet-dispatch thread. UIKit only queues.
 void setControlHandler(std::function<bool(int)> handler);
-void setCatalogHandlers(std::function<void(std::string, uint64_t)> search,
-    std::function<bool(std::string)> play);
-void publishCatalog(uint64_t request, const std::string& json);
+void setPlaybackHandlers(std::function<bool(const std::vector<std::string>&, size_t, const std::string&)> play,
+                         std::function<void(uint32_t)> seek);
+// Catalog service: (kind, argument, publish(json, done)). Invoked on a worker thread per request.
+using CatalogPublish = std::function<void(const std::string&, bool)>;
+void setCatalogService(std::function<void(const std::string&, const std::string&, const CatalogPublish&)> service);
 void dispatchPending();
 void clearControlHandler();
 }
