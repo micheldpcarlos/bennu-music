@@ -209,7 +209,7 @@ static NSString* playerTime(uint32_t ms) {
   self.nextButton.alpha = enabled ? 1 : 0.3;
   [self.playButton setTitle:snapshot.paused ? @"Play" : @"Pause" forState:UIControlStateNormal];
   self.playButton.accessibilityLabel = snapshot.paused ? @"Resume playback" : @"Pause playback";
-  self.titleLabel.text = snapshot.hasTrack ? playerText(snapshot.title) : @"Phoenix";
+  self.titleLabel.text = snapshot.hasTrack ? playerText(snapshot.title) : @"Phoenix Player";
   self.artistLabel.text = snapshot.hasTrack ? playerText(snapshot.artist) : @"Your music, on this iPad";
   self.albumLabel.text = snapshot.hasTrack ? playerText(snapshot.album) : @"";
   self.elapsedLabel.text = playerTime(snapshot.hasTrack ? snapshot.positionMs : 0);

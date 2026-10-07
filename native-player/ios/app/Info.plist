@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Phoenix</string>
+	<string>Phoenix Player</string>
 	<key>CFBundleExecutable</key>
 	<string>ipad-media-app</string>
 	<key>CFBundleIconFiles</key>
@@ -32,7 +32,7 @@
 	<key>CFBundleIdentifier</key>
 	<string>org.ipad2mediaplayer.receiver</string>
 	<key>CFBundleName</key>
-	<string>Phoenix</string>
+	<string>Phoenix Player</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
