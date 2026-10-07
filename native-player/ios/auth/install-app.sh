@@ -26,10 +26,13 @@ chown -R mobile:mobile iPad2MediaPlayer.app
 uicache
 echo "installed: $(ls iPad2MediaPlayer.app | grep -c "^ipad-player-") executable(s) in bundle"'
 # Verify the device bundle matches what was built; fail loudly otherwise.
-REMOTE_EXE=$(ssh "${SSH_OPTS[@]}" "$IPAD" 'cd /Applications/iPad2MediaPlayer.app && ls ipad-player-* && ls AppIcon-*.png | wc -l' 2>/dev/null | tr -d ' ')
+# (The iPad shell lacks wc/head/tail, so all counting happens here.)
+REMOTE_LIST=$(ssh "${SSH_OPTS[@]}" "$IPAD" 'ls /Applications/iPad2MediaPlayer.app' 2>/dev/null)
+REMOTE_ICONS=$(printf '%s\n' "$REMOTE_LIST" | grep -c '^AppIcon-.*\.png$' || true)
 LOCAL_ICONS=$(find "$APP" -maxdepth 1 -name 'AppIcon-*.png' | wc -l | tr -d ' ')
-case "$REMOTE_EXE" in
-  "$EXECUTABLE"$'\n'"$LOCAL_ICONS") echo "Verified on device: $EXECUTABLE with $LOCAL_ICONS icons";;
-  *) echo "DEVICE BUNDLE DOES NOT MATCH THE BUILD (got: ${REMOTE_EXE//$'\n'/ })" >&2; exit 1;;
-esac
+if printf '%s\n' "$REMOTE_LIST" | grep -qx "$EXECUTABLE" && [ "$REMOTE_ICONS" = "$LOCAL_ICONS" ]; then
+  echo "Verified on device: $EXECUTABLE with $LOCAL_ICONS icons"
+else
+  echo "DEVICE BUNDLE DOES NOT MATCH THE BUILD: $(printf '%s ' $REMOTE_LIST)" >&2; exit 1
+fi
 echo "Done. Rollback: ssh $IPAD 'cd /Applications && rm -rf iPad2MediaPlayer.app && mv iPad2MediaPlayer.app.previous iPad2MediaPlayer.app && uicache'"
