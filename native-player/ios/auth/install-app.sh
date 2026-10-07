@@ -25,4 +25,11 @@ mv iPad2MediaPlayer.app.staging iPad2MediaPlayer.app
 chown -R mobile:mobile iPad2MediaPlayer.app
 uicache
 echo "installed: $(ls iPad2MediaPlayer.app | grep -c "^ipad-player-") executable(s) in bundle"'
+# Verify the device bundle matches what was built; fail loudly otherwise.
+REMOTE_EXE=$(ssh "${SSH_OPTS[@]}" "$IPAD" 'cd /Applications/iPad2MediaPlayer.app && ls ipad-player-* && ls AppIcon-*.png | wc -l' 2>/dev/null | tr -d ' ')
+LOCAL_ICONS=$(find "$APP" -maxdepth 1 -name 'AppIcon-*.png' | wc -l | tr -d ' ')
+case "$REMOTE_EXE" in
+  "$EXECUTABLE"$'\n'"$LOCAL_ICONS") echo "Verified on device: $EXECUTABLE with $LOCAL_ICONS icons";;
+  *) echo "DEVICE BUNDLE DOES NOT MATCH THE BUILD (got: ${REMOTE_EXE//$'\n'/ })" >&2; exit 1;;
+esac
 echo "Done. Rollback: ssh $IPAD 'cd /Applications && rm -rf iPad2MediaPlayer.app && mv iPad2MediaPlayer.app.previous iPad2MediaPlayer.app && uicache'"
