@@ -24,6 +24,7 @@ class Catalog {
   void collection(const Publish& publish);          // liked songs
   void recent(const Publish& publish);              // recently played contexts
   void profile(const Publish& publish);
+  void playlists(const Publish& publish);          // the user's own and followed playlists (rootlist)
   void context(const std::string& uri, const Publish& publish);  // any playable context -> tracks
   void tracks(const std::vector<std::string>& uris, const Publish& publish);
  private:

@@ -12,6 +12,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
 @property(nonatomic, strong) NSArray* playlists;
 @property(nonatomic, strong) CatalogRequest* recentRequest;
 @property(nonatomic, strong) CatalogRequest* profileRequest;
+@property(nonatomic, strong) CatalogRequest* playlistsRequest;
 @property(nonatomic, strong) UIView* header;
 @property(nonatomic, strong) UILabel* greeting;
 @property(nonatomic, strong) UIButton* accountButton;
@@ -74,11 +75,18 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   self.profileRequest = [[CatalogClient shared] request:@"profile" argument:@"" update:^(NSDictionary* json, BOOL done) {
     HomeViewController* owner = weakSelf; if (!owner) return;
     NSString* name = json[@"name"];
-    if ([name isKindOfClass:NSString.class] && name.length) owner.greeting.text = [NSString stringWithFormat:@"%@, %@", owner.greeting.text, [name componentsSeparatedByString:@" "].firstObject];
+    if ([name isKindOfClass:NSString.class] && name.length && ![owner.greeting.text containsString:@","])
+      owner.greeting.text = [NSString stringWithFormat:@"%@, %@", owner.greeting.text, [name componentsSeparatedByString:@" "].firstObject];
+  }];
+  self.playlistsRequest = [[CatalogClient shared] request:@"playlists" argument:@"" update:^(NSDictionary* json, BOOL done) {
+    HomeViewController* owner = weakSelf; if (!owner) return;
     NSMutableArray* tiles = [NSMutableArray array];
     if ([json[@"playlists"] isKindOfClass:NSArray.class])
-      for (NSDictionary* playlist in json[@"playlists"])
-        [tiles addObject:@{@"uri": playlist[@"uri"] ?: @"", @"name": playlist[@"name"] ?: @"", @"subtitle": playlist[@"owner"] ?: @"Playlist", @"artwork": playlist[@"artwork"] ?: @"", @"type": @"playlist"}];
+      for (NSDictionary* playlist in json[@"playlists"]) {
+        NSNumber* count = playlist[@"count"];
+        [tiles addObject:@{@"uri": playlist[@"uri"] ?: @"", @"name": playlist[@"name"] ?: @"", @"subtitle": [count intValue] ? [NSString stringWithFormat:@"%d songs", [count intValue]] : @"Playlist", @"artwork": playlist[@"artwork"] ?: @"", @"type": @"playlist"}];
+        if (tiles.count >= 20) break;
+      }
     owner.playlists = tiles;
     [owner.table reloadData];
   }];

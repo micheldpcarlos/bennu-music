@@ -446,6 +446,51 @@ void Catalog::recent(const Publish& publish) {
   publish(JSON{{"items", items}, {"loading", false}}.dump(), true);
 }
 
+static std::string base64ToHex(const std::string& input) {
+  static const std::string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  std::string bytes; unsigned buffer = 0; int bits = 0;
+  for (char c : input) {
+    if (c == '=') break;
+    auto value = alphabet.find(c); if (value == std::string::npos) return {};
+    buffer = (buffer << 6) | static_cast<unsigned>(value); bits += 6;
+    if (bits >= 8) { bits -= 8; bytes += static_cast<char>((buffer >> bits) & 0xff); }
+  }
+  static const char* digits = "0123456789abcdef"; std::string hex;
+  for (unsigned char b : bytes) { hex += digits[b >> 4]; hex += digits[b & 15]; }
+  return hex;
+}
+void Catalog::playlists(const Publish& publish) {
+  const auto username = context_->config.username;
+  int status = 0;
+  auto body = getJSON("/playlist/v2/user/" + username + "/rootlist?decorate=revision,attributes,length,owner,capabilities,status_code&from=0&length=300", status);
+  if (status != 200) throw std::runtime_error("rootlist HTTP " + std::to_string(status));
+  auto document = JSON::parse(body);
+  JSON list = JSON::array();
+  if (document.count("contents") && document["contents"].is_object()) {
+    const auto& contents = document["contents"];
+    const JSON& items = contents.count("items") ? contents["items"] : JSON::array();
+    const JSON& meta = contents.count("metaItems") ? contents["metaItems"] : JSON::array();
+    for (size_t i = 0; i < items.size() && items.is_array(); ++i) {
+      auto uri = str(items[i], "uri", 128);
+      if (uri.compare(0, 17, "spotify:playlist:") != 0 || !validID(uri.substr(17))) continue;  // folders are start/end-group markers
+      JSON entry{{"uri", uri}, {"name", ""}, {"artwork", ""}, {"owner", ""}, {"count", 0}};
+      if (meta.is_array() && i < meta.size() && meta[i].is_object()) {
+        const auto& m = meta[i];
+        if (m.count("attributes") && m["attributes"].is_object()) {
+          entry["name"] = str(m["attributes"], "name", 256);
+          auto picture = base64ToHex(str(m["attributes"], "picture", 64));
+          if (picture.size() == 40) entry["artwork"] = imageURL(picture);
+        }
+        entry["owner"] = str(m, "ownerUsername", 128);
+        entry["count"] = num(m, "length");
+      }
+      if (entry["name"].get<std::string>().empty()) entry["name"] = "Playlist";
+      list.push_back(entry);
+    }
+  }
+  std::fprintf(stderr, "CATALOG: playlists=%lu\n", static_cast<unsigned long>(list.size()));
+  publish(JSON{{"playlists", list}, {"loading", false}}.dump(), true);
+}
 void Catalog::profile(const Publish& publish) {
   const auto username = context_->config.username;
   int status = 0;

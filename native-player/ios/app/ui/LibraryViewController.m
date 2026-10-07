@@ -46,12 +46,14 @@
 - (void)load {
   self.status.text = @"Loading…";
   __weak LibraryViewController* weakSelf = self;
-  self.profileRequest = [[CatalogClient shared] request:@"profile" argument:@"" update:^(NSDictionary* json, BOOL done) {
+  self.profileRequest = [[CatalogClient shared] request:@"playlists" argument:@"" update:^(NSDictionary* json, BOOL done) {
     LibraryViewController* owner = weakSelf; if (!owner) return;
     NSMutableArray* list = [NSMutableArray array];
     if ([json[@"playlists"] isKindOfClass:NSArray.class])
-      for (NSDictionary* playlist in json[@"playlists"])
-        [list addObject:@{@"uri": playlist[@"uri"] ?: @"", @"name": playlist[@"name"] ?: @"", @"subtitle": [NSString stringWithFormat:@"Playlist • %@", playlist[@"owner"] ?: @""], @"artwork": playlist[@"artwork"] ?: @"", @"type": @"playlist"}];
+      for (NSDictionary* playlist in json[@"playlists"]) {
+        NSNumber* count = playlist[@"count"];
+        [list addObject:@{@"uri": playlist[@"uri"] ?: @"", @"name": playlist[@"name"] ?: @"", @"subtitle": [count intValue] ? [NSString stringWithFormat:@"Playlist • %d songs", [count intValue]] : @"Playlist", @"artwork": playlist[@"artwork"] ?: @"", @"type": @"playlist"}];
+      }
     owner.playlists = list; [owner rebuild];
   }];
   self.recentRequest = [[CatalogClient shared] request:@"recent" argument:@"" update:^(NSDictionary* json, BOOL done) {

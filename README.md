@@ -521,6 +521,6 @@ The app is now a Spotify-style player with its own browsing UI. Everything below
 ### Known gaps
 
 - No repeat mode (engine support missing), no queue view, no "add to playlist" or like/unlike (those need write endpoints).
-- The private playlist list (`rootlist`) returns 500; Library shows public playlists plus recently played ones.
-- Search for artists and albums is derived from the matching tracks, so obscure artists with no matching tracks will not appear.
+- Your full playlist list comes from the `rootlist` endpoint, which only answers JSON when exactly one `Accept` header is sent (bell's HTTP client adds its own `*/*`, hence the earlier 500s). Radio playlists carry no cover and show a placeholder.
+- Search for artists and albums is derived from the matching tracks, so obscure artists with no matching tracks will not appear. The `searchview` endpoint that would return them directly answers HTTP 400 now.
 - Landscape layouts are implemented but were only checked in portrait.

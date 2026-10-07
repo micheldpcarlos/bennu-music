@@ -2,6 +2,7 @@
 #include "CatalogProbe.h"
 #include "AccessKeyFetcher.h"
 #include "CSpotContext.h"
+#include "SpclientClient.h"
 #include "HTTPClient.h"
 #include <nlohmann/json.hpp>
 #include <cstdio>
@@ -23,7 +24,8 @@ void runCatalogProbeIfRequested(std::shared_ptr<cspot::Context> context) {
   if (urls.empty()) return;
   auto fetcher = cspot::AccessKeyFetcher::forContext(context);
   const std::string username = context->config.username;
-  std::thread([fetcher, urls, username]() {
+  auto spclient = std::make_shared<SpclientClient>(context);
+  std::thread([fetcher, urls, username, spclient]() {
     const auto token = fetcher->getAccessKey();
     if (token.empty()) { std::fprintf(stderr, "PROBE: no session token\n"); return; }
     int index = 0;
@@ -46,9 +48,16 @@ void runCatalogProbeIfRequested(std::shared_ptr<cspot::Context> context) {
           }
         }
         headers.push_back({"Accept", accept});
-        auto response = bell::HTTPClient::get(url, headers);
-        const int status = response->statusCode();
-        auto bytes = response->bytes();
+        int status = 0; std::vector<uint8_t> bytes;
+        if (url.find("spclient") != std::string::npos && headers.size() == 2) {
+          // Single Accept header through the keep-alive client (bell adds its own "*/*" first).
+          auto path = url.substr(url.find('/', 8));
+          auto response = spclient->get(path, accept);
+          status = response.status; bytes.assign(response.body.begin(), response.body.end());
+        } else {
+          auto response = bell::HTTPClient::get(url, headers);
+          status = response->statusCode(); bytes = response->bytes();
+        }
         std::string keys;
         try {
           auto document = nlohmann::json::parse(bytes.begin(), bytes.end());
