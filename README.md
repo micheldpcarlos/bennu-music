@@ -469,3 +469,22 @@ Catalog v2 (`ipad2-catalog-v2`), executable `ipad-player-a80d3a7c76f9`. A rebuil
 source native-player/build-venv/bin/activate
 python3 native-player/ios/token-test/search-probe.py
 ```
+
+### Verified on device — 2026-10-07 18:35 (executable `ipad-player-5e03a24d2cdf`)
+
+First complete independent flow: cold start with saved Keychain credentials, search on the iPad, local track selection, audible playback. No phone or Mac involved. Log excerpt (no secrets):
+
+```text
+CATALOG: backend=context-resolve
+PLAYBACK AUTH: token accepted
+CATALOG: sending search request backend=context-resolve
+CATALOG: spclient host=gue1-spclient.spotify.com:443
+CATALOG: HTTP=200
+CATALOG: context tracks=10 of 20
+CATALOG: tracks=10
+Load frame 1!  ->  Track name: A Morte do Vaqueiro  ->  AUDIO: queue running=1 status=0
+```
+
+Search uses the spclient context-resolve endpoint with the session's own login5 token (see `native-player/ios/catalog/SEARCH-ALTERNATIVES.md`). The public Web API path and the separate own-app OAuth plan are no longer required for search. `IPAD2-PLAYER-HANDOFF.md` predates this and is kept for history only.
+
+Remaining acceptance tests: pause/resume and track change on a locally selected track, screen-off playback with a locally selected track, close/reopen then search again (cache hit expected), token expiry after one hour, and transient network failure. Known limits: tracks only (no album/artist/playlist browsing), ten results, one metadata request per result.

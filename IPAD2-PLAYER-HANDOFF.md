@@ -1,3 +1,5 @@
+> **Superseded 2026-10-07.** Catalog search now works on device through spclient context-resolve with the session token; the own-app OAuth plan below is not needed for search. The source is in git. See README.md "Checkpoint — 2026-10-07" and `native-player/ios/catalog/SEARCH-ALTERNATIVES.md`.
+
 # iPad 2 Spotify player — agent handoff
 
 Updated: 2026-10-07. User: Michel Carlos. Continue in English.
