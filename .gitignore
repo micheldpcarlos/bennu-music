@@ -10,7 +10,15 @@
 /native-player/ios/build/
 /native-player/build-venv/
 /native-player/cspot-port-source.tar.gz
-/native-player/deps/
+# mbedtls sources are vendored; keep its test suites, docs and sample programs out
+/native-player/deps/mbedtls-3.6.7/tests/
+/native-player/deps/mbedtls-3.6.7/docs/
+/native-player/deps/mbedtls-3.6.7/programs/
+/native-player/deps/mbedtls-3.6.7/visualc/
+/native-player/deps/mbedtls-3.6.7/.github/
+/native-player/deps/mbedtls-3.6.7/ChangeLog.d/
+/native-player/deps/mbedtls-3.6.7/framework/tests/
+/native-player/deps/mbedtls-3.6.7/framework/.github/
 /browser-port/toolchains/
 /browser-port/legacy-sdks/
 __pycache__/

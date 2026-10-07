@@ -19,7 +19,7 @@ project is GPL-3.0-or-later as marked in file headers.
 
 bell's own external submodules, unmodified:
 
-- `native-player/cspot/cspot/bell/external/mdnssvc` — unknown @ `unknown` (local changes: 0 files)
-- `native-player/cspot/cspot/bell/external/nlohmann_json` — unknown @ `unknown` (local changes: 0 files)
-- `native-player/deps/mbedtls-3.6.7` — https://github.com/Mbed-TLS/mbedtls.git @ `068ff08` (local changes: 1 files)
-- `native-player/deps/mbedtls-3.6.7/framework` — unknown @ `unknown` (local changes: 0 files)
+- `native-player/cspot/cspot/bell/external/mdnssvc` — https://github.com/philippe44/mdnssvc (bell submodule, local changes: 0 files)
+- `native-player/cspot/cspot/bell/external/nlohmann_json` — https://github.com/nlohmann/json (bell submodule, local changes: 0 files; docs/tests/tools excluded)
+- `native-player/deps/mbedtls-3.6.7` — https://github.com/Mbed-TLS/mbedtls.git tag `mbedtls-3.6.7` (`068ff08`); local changes in `mbedtls-port.patch`
+- `native-player/deps/mbedtls-3.6.7/framework` — https://github.com/Mbed-TLS/mbedtls-framework (mbedtls submodule, local changes: 0 files)
