@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "PlayerBridge.h"
+#include "Catalog.h"  // base62FromHex
 #include <nlohmann/json.hpp>
 #include <algorithm>
 #include <chrono>
@@ -82,8 +83,13 @@ uint64_t ipad_catalog_request(const char* kind, const char* argument) {
     catalogResults[id] = entry;
   }
   std::thread([service, id, kindText, argumentText]() {
+    const auto started = Clock::now();
     try {
-      service(kindText, argumentText, [id](const std::string& json, bool done) { publishCatalog(id, json, done); });
+      service(kindText, argumentText, [id, kindText, started](const std::string& json, bool done) {
+        publishCatalog(id, json, done);
+        if (done) std::fprintf(stderr, "CATALOG: %s done bytes=%lu ms=%lld\n", kindText.c_str(), static_cast<unsigned long>(json.size()),
+            static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count()));
+      });
     } catch (const std::exception& error) {
       std::fprintf(stderr, "CATALOG: %s request failed: %s\n", kindText.c_str(), error.what());
       publishCatalog(id, std::string("{\"error\":\"") + "Could not load from Spotify." + "\",\"loading\":false}", true);
@@ -192,7 +198,10 @@ void ipad_player_track(const char* id, const char* title, const char* artist,
     const char* album, const char* artwork, uint32_t duration) {
   std::lock_guard<std::mutex> lock(bridgeMutex);
   freezePosition();
-  copyText(state.trackId, id); copyText(state.title, title);
+  // The engine reports the 128-bit GID as hex; the UI works with base62 ids from URIs.
+  std::string trackId = id ? id : "";
+  if (trackId.size() == 32) { auto converted = ipad_player::base62FromHex(trackId); if (!converted.empty()) trackId = converted; }
+  copyText(state.trackId, trackId.c_str()); copyText(state.title, title);
   copyText(state.artist, artist); copyText(state.album, album); copyText(state.artwork, artwork);
   state.durationMs = duration; state.hasTrack = 1; state.loading = 0;
   positionAt = Clock::now();

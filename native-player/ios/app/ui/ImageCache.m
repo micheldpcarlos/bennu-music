@@ -55,10 +55,32 @@ static char kImageURLKey;
     if ([current isEqualToString:url]) strongView.image = image;
   }];
 }
+- (void)loadMosaic:(NSString*)url completion:(void (^)(UIImage*))completion {
+  NSArray* ids = [[url substringFromIndex:15] componentsSeparatedByString:@":"];
+  if (ids.count < 4) { completion(nil); return; }
+  NSMutableArray* images = [NSMutableArray arrayWithObjects:[NSNull null], [NSNull null], [NSNull null], [NSNull null], nil];
+  __block NSUInteger remaining = 4;
+  __weak ImageCache* weakSelf = self;
+  for (NSUInteger i = 0; i < 4; i++) {
+    [self load:[@"https://i.scdn.co/image/" stringByAppendingString:ids[i]] completion:^(UIImage* image) {
+      if (image) images[i] = image;
+      if (--remaining) return;
+      CGFloat size = 300;
+      UIGraphicsBeginImageContextWithOptions(CGSizeMake(size, size), YES, 1);
+      [[UIColor colorWithWhite:0.16 alpha:1] setFill]; UIRectFill(CGRectMake(0, 0, size, size));
+      for (NSUInteger j = 0; j < 4; j++)
+        if (images[j] != [NSNull null]) [(UIImage*)images[j] drawInRect:CGRectMake((j % 2) * size / 2, (j / 2) * size / 2, size / 2, size / 2)];
+      UIImage* mosaic = UIGraphicsGetImageFromCurrentImageContext(); UIGraphicsEndImageContext();
+      [weakSelf.memory setObject:mosaic forKey:url cost:(NSUInteger)(size * size * 4)];
+      completion(mosaic);
+    }];
+  }
+}
 - (void)load:(NSString*)url completion:(void (^)(UIImage*))completion {
   if (!url.length) { completion(nil); return; }
   UIImage* cached = [self.memory objectForKey:url];
   if (cached) { completion(cached); return; }
+  if ([url hasPrefix:@"spotify:mosaic:"]) { [self loadMosaic:url completion:completion]; return; }
   NSURL* address = [NSURL URLWithString:url];
   if (![self allowed:address]) { completion(nil); return; }
   NSMutableArray* waiting = self.inFlight[url];
@@ -82,11 +104,12 @@ static char kImageURLKey;
     request.timeoutInterval = 20;
     [[weakSelf.session dataTaskWithRequest:request completionHandler:^(NSData* data, NSURLResponse* response, NSError* error) {
       UIImage* fetched = nil;
-      if (!error && data.length > 0 && data.length < 3 * 1024 * 1024 &&
-          [response isKindOfClass:NSHTTPURLResponse.class] && ((NSHTTPURLResponse*)response).statusCode == 200) {
+      NSInteger status = [response isKindOfClass:NSHTTPURLResponse.class] ? ((NSHTTPURLResponse*)response).statusCode : 0;
+      if (!error && data.length > 0 && data.length < 3 * 1024 * 1024 && status == 200) {
         fetched = [UIImage imageWithData:data];
         if (fetched) [data writeToFile:path atomically:YES];
       }
+      if (!fetched) fprintf(stderr, "IMG: %s failed status=%ld error=%ld %s\n", address.host.UTF8String, (long)status, (long)error.code, error.localizedDescription.UTF8String ?: "");
       finish(fetched);
     }] resume];
   });

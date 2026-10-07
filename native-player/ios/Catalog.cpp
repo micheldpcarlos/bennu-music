@@ -42,9 +42,23 @@ long long num(const JSON& object, const char* key) {
 }
 std::string imageURL(const std::string& id) {
   if (id.empty()) return {};
-  if (id.compare(0, 8, "https://") == 0) return id.size() < 512 ? id : std::string();
+  if (id.compare(0, 8, "https://") == 0) {
+    if (id.size() >= 512) return {};
+    // Legacy hosts (u.scdn.co no longer resolves) and image-cdn-ak.spotifycdn.com (serves formats
+    // iOS 9 cannot decode) carry the same 40-hex image id; i.scdn.co serves it as JPEG.
+    auto slash = id.rfind('/');
+    if (slash != std::string::npos && id.size() - slash - 1 == 40 && id.find("i.scdn.co") == std::string::npos) {
+      auto tail = id.substr(slash + 1);
+      if (tail.find_first_not_of("0123456789abcdef") == std::string::npos) return imageURL(tail);
+    }
+    return id;
+  }
+  if (id.compare(0, 15, "spotify:mosaic:") == 0) return id.size() < 512 ? id : std::string();  // the UI composes 2x2 collages
   std::string bare = id.compare(0, 14, "spotify:image:") == 0 ? id.substr(14) : id;
   if (bare.size() != 40 || bare.find_first_not_of("0123456789abcdef") != std::string::npos) return {};
+  // Characters 8-16 select size and format. 0000d72c is only served as WebP, which iOS 9
+  // cannot decode; 0000bebb is the JPEG equivalent for playlist covers.
+  if (bare.compare(8, 8, "0000d72c") == 0) bare.replace(8, 8, "0000bebb");
   return "https://i.scdn.co/image/" + bare;
 }
 // cover_group / portrait_group -> {default, small}
@@ -243,46 +257,46 @@ void Catalog::context(const std::string& uri, const Publish& publish) {
 void Catalog::search(const std::string& query, const Publish& publish) {
   const auto encoded = percentEncode(query);
   JSON result{{"query", query}, {"tracks", JSON::array()}, {"albums", JSON::array()}, {"artists", JSON::array()}, {"loading", true}};
-  auto trackURIs = contextTrackURIs("spotify:search:" + encoded, nullptr);
-  if (trackURIs.size() > 20) trackURIs.resize(20);
+  auto raw = contextTrackURIs("spotify:search:" + encoded, nullptr);
+  std::vector<std::string> trackURIs; std::set<std::string> seenTracks;
+  for (const auto& uri : raw) if (seenTracks.insert(uri).second) { trackURIs.push_back(uri); if (trackURIs.size() >= 20) break; }
   std::fprintf(stderr, "CATALOG: search tracks=%lu\n", static_cast<unsigned long>(trackURIs.size()));
   hydrate(trackURIs, [&](size_t, bool done) { result["tracks"] = TRACKLIST(trackURIs); publish(result.dump(), false); (void)done; });
-  // Albums and artists come back as representative tracks; group them.
-  try {
-    auto albumTracks = contextTrackURIs("spotify:search:albums:" + encoded, nullptr);
-    if (albumTracks.size() > 12) albumTracks.resize(12);
-    hydrate(albumTracks, [](size_t, bool) {});
-    std::set<std::string> seen; JSON albums = JSON::array();
-    for (const auto& uri : albumTracks) {
-      auto json = trackJSON(uri); if (json.empty()) continue;
-      auto track = JSON::parse(json);
-      auto albumUri = str(track, "albumUri", 64);
-      if (albumUri.empty() || seen.count(albumUri)) continue;
-      seen.insert(albumUri);
-      albums.push_back({{"uri", albumUri}, {"name", str(track, "album", 512)}, {"artist", str(track, "artist", 512)}, {"artwork", str(track, "artwork", 512)}});
-      if (albums.size() >= 8) break;
+  // The dedicated album/artist search contexts return unrelated items, so albums and artists
+  // are the ones most frequent among the matching tracks (the query's artist dominates).
+  std::map<std::string, std::pair<int, JSON>> albums, artists;
+  std::vector<std::string> albumOrder, artistOrder;
+  for (const auto& uri : trackURIs) {
+    auto json = trackJSON(uri); if (json.empty()) continue;
+    auto track = JSON::parse(json);
+    auto albumUri = str(track, "albumUri", 64);
+    if (!albumUri.empty()) {
+      auto& entry = albums[albumUri];
+      if (entry.first++ == 0) { albumOrder.push_back(albumUri); entry.second = {{"uri", albumUri}, {"name", str(track, "album", 512)}, {"artist", str(track, "artist", 512)}, {"artwork", str(track, "artwork", 512)}}; }
     }
-    result["albums"] = albums; publish(result.dump(), false);
-  } catch (...) { std::fprintf(stderr, "CATALOG: album search failed\n"); }
-  try {
-    auto artistTracks = contextTrackURIs("spotify:search:artists:" + encoded, nullptr);
-    if (artistTracks.size() > 10) artistTracks.resize(10);
-    hydrate(artistTracks, [](size_t, bool) {});
-    std::set<std::string> seen; JSON artists = JSON::array();
-    for (const auto& uri : artistTracks) {
-      auto json = trackJSON(uri); if (json.empty()) continue;
-      auto track = JSON::parse(json);
-      if (!track.count("artists") || !track["artists"].is_array() || track["artists"].empty()) continue;
-      auto artistUri = str(track["artists"][0], "uri", 64), name = str(track["artists"][0], "name", 256);
-      if (artistUri.empty() || seen.count(artistUri)) continue;
-      seen.insert(artistUri);
-      JSON entry{{"uri", artistUri}, {"name", name}, {"image", ""}};
-      if (artists.size() < 4) { try { auto summary = JSON::parse(artistSummary(hexFromBase62(artistUri.substr(15)))); entry["image"] = str(summary, "image", 512); } catch (...) {} }
-      artists.push_back(entry);
-      if (artists.size() >= 6) break;
-    }
-    result["artists"] = artists;
-  } catch (...) { std::fprintf(stderr, "CATALOG: artist search failed\n"); }
+    if (track.count("artists") && track["artists"].is_array())
+      for (const auto& person : track["artists"]) {
+        auto artistUri = str(person, "uri", 64), name = str(person, "name", 256);
+        if (artistUri.empty()) continue;
+        auto& entry = artists[artistUri];
+        if (entry.first++ == 0) { artistOrder.push_back(artistUri); entry.second = {{"uri", artistUri}, {"name", name}, {"image", ""}}; }
+      }
+  }
+  auto rank = [](std::vector<std::string>& order, std::map<std::string, std::pair<int, JSON>>& counts) {
+    std::stable_sort(order.begin(), order.end(), [&](const std::string& a, const std::string& b) { return counts[a].first > counts[b].first; });
+  };
+  rank(albumOrder, albums); rank(artistOrder, artists);
+  JSON albumList = JSON::array();
+  for (const auto& uri : albumOrder) { albumList.push_back(albums[uri].second); if (albumList.size() >= 8) break; }
+  result["albums"] = albumList; publish(result.dump(), false);
+  JSON artistList = JSON::array();
+  for (const auto& uri : artistOrder) {
+    JSON entry = artists[uri].second;
+    if (artistList.size() < 4) { try { auto summary = JSON::parse(artistSummary(hexFromBase62(uri.substr(15)))); entry["image"] = str(summary, "image", 512); } catch (...) {} }
+    artistList.push_back(entry);
+    if (artistList.size() >= 6) break;
+  }
+  result["artists"] = artistList;
   result["loading"] = false;
   publish(result.dump(), true);
 }

@@ -11,7 +11,7 @@ add_custom_command(OUTPUT "${IPAD_APP_OBJECT}"
       -fobjc-arc -fblocks
       -c "${IPAD_APP_DIR}/AppMain.mm" -o "${IPAD_APP_OBJECT}"
     DEPENDS "${IPAD_APP_DIR}/AppMain.mm" "${IPAD_APP_DIR}/AppAudioSession.inc"
-      "${IPAD_APP_DIR}/ui/MainTabController.h" "${CMAKE_CURRENT_SOURCE_DIR}/PlayerBridge.h"
+      "${IPAD_APP_DIR}/ui/MainTabController.h" "${IPAD_APP_DIR}/ui/DevURLs.h" "${CMAKE_CURRENT_SOURCE_DIR}/PlayerBridge.h"
     VERBATIM)
 set_source_files_properties("${IPAD_APP_OBJECT}"
     PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
@@ -29,7 +29,7 @@ target_compile_definitions(ipad-media-app PRIVATE CSPOT_ENABLE_IOS_SINK=1 CSPOT_
 target_link_libraries(ipad-media-app PRIVATE cspot
     "-framework UIKit" "-framework AVFoundation" "-framework Foundation" "-framework CFNetwork" "-framework Security" "-framework CoreGraphics" "-framework CoreImage" "-framework QuartzCore"
     "${CMAKE_OSX_SYSROOT}/usr/lib/system/libcommonCrypto.tbd"
-    "-framework AudioToolbox" "-framework CoreFoundation"
+    "-framework AudioToolbox" "-framework CoreFoundation" "-framework MediaPlayer"
     "${CMAKE_OSX_SYSROOT}/usr/lib/system/libsystem_dnssd.tbd")
 # Playback diagnostics shared by the command-line and app executables.
 target_sources(cspot-ipad PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/PlaybackMetrics.cpp")

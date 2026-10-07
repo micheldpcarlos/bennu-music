@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <exception>
 #import "ui/MainTabController.h"
+#import "ui/DevURLs.h"
 #include "../PlayerBridge.h"
 
 int ipad_cspot_engine_main(int argc, char** argv);
@@ -91,7 +92,7 @@ static void startEngine() {
 }
 - (BOOL)application:(UIApplication*)application openURL:(NSURL*)url sourceApplication:(NSString*)source annotation:(id)annotation {
   std::fprintf(stderr, "APP: opened via url scheme\n");
-  return YES;
+  return PhoenixHandleURL(url);
 }
 - (void)applicationDidEnterBackground:(UIApplication*)application {
   (void)application;

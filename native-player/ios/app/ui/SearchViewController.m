@@ -62,6 +62,7 @@ enum { SearchSongs = 0, SearchArtists, SearchAlbums, SearchCount };
   [self.debounce invalidate];
   self.debounce = [NSTimer scheduledTimerWithTimeInterval:0.7 target:self selector:@selector(search) userInfo:nil repeats:NO];
 }
+- (void)searchFor:(NSString*)query { [self view]; self.field.text = query; self.lastQuery = nil; [self search]; }
 - (void)search {
   NSString* query = [self.field.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
   if (query.length < 2 || [query isEqualToString:self.lastQuery]) return;

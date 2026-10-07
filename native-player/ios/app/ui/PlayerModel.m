@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "PlayerModel.h"
 #import "CatalogClient.h"
+#import "ImageCache.h"
+#import <MediaPlayer/MediaPlayer.h>
 NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
 @interface PlayerModel ()
 @property(nonatomic) IPadPlayerSnapshot snapshot;
@@ -10,6 +12,9 @@ NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
 @property(nonatomic, strong) NSTimer* timer;
 @property(nonatomic, strong) CatalogRequest* contextRequest;
 @property(nonatomic, strong) NSArray* queue;
+@property(nonatomic, copy) NSString* infoTrackId;
+@property(nonatomic, strong) UIImage* infoArtwork;
+@property(nonatomic) BOOL infoPaused;
 @end
 @implementation PlayerModel
 + (instancetype)shared {
@@ -20,6 +25,14 @@ NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
 - (BOOL)ready { return self.snapshot.state == IPadReady; }
 - (void)start {
   if (self.timer) return;
+  // Lock screen, Control Center and headphone buttons.
+  MPRemoteCommandCenter* commands = [MPRemoteCommandCenter sharedCommandCenter];
+  [commands.playCommand addTarget:self action:@selector(remotePlay:)];
+  [commands.pauseCommand addTarget:self action:@selector(remotePause:)];
+  [commands.togglePlayPauseCommand addTarget:self action:@selector(remoteToggle:)];
+  [commands.nextTrackCommand addTarget:self action:@selector(remoteNext:)];
+  [commands.previousTrackCommand addTarget:self action:@selector(remotePrevious:)];
+  [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
   self.timer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(refresh) userInfo:nil repeats:YES];
   [self refresh];
 }
@@ -27,7 +40,41 @@ NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
   IPadPlayerSnapshot snapshot; memset(&snapshot, 0, sizeof snapshot);
   ipad_player_snapshot(&snapshot);
   self.snapshot = snapshot;
+  [self updateNowPlayingInfo];
   [NSNotificationCenter.defaultCenter postNotificationName:PhoenixPlayerChanged object:self];
+}
+- (MPRemoteCommandHandlerStatus)remotePlay:(MPRemoteCommandEvent*)event { if (self.snapshot.paused) [self togglePause]; return MPRemoteCommandHandlerStatusSuccess; }
+- (MPRemoteCommandHandlerStatus)remotePause:(MPRemoteCommandEvent*)event { if (!self.snapshot.paused) [self togglePause]; return MPRemoteCommandHandlerStatusSuccess; }
+- (MPRemoteCommandHandlerStatus)remoteToggle:(MPRemoteCommandEvent*)event { [self togglePause]; return MPRemoteCommandHandlerStatusSuccess; }
+- (MPRemoteCommandHandlerStatus)remoteNext:(MPRemoteCommandEvent*)event { [self next]; return MPRemoteCommandHandlerStatusSuccess; }
+- (MPRemoteCommandHandlerStatus)remotePrevious:(MPRemoteCommandEvent*)event { [self previous]; return MPRemoteCommandHandlerStatusSuccess; }
+- (void)updateNowPlayingInfo {
+  IPadPlayerSnapshot snapshot = self.snapshot;
+  MPNowPlayingInfoCenter* center = [MPNowPlayingInfoCenter defaultCenter];
+  if (!snapshot.hasTrack) { if (self.infoTrackId) { center.nowPlayingInfo = nil; self.infoTrackId = nil; self.infoArtwork = nil; } return; }
+  NSString* trackId = @(snapshot.trackId);
+  BOOL changed = ![trackId isEqualToString:self.infoTrackId] || snapshot.paused != self.infoPaused;
+  if (changed) {
+    self.infoTrackId = trackId; self.infoPaused = snapshot.paused;
+    NSMutableDictionary* info = [NSMutableDictionary dictionary];
+    info[MPMediaItemPropertyTitle] = @(snapshot.title);
+    info[MPMediaItemPropertyArtist] = @(snapshot.artist);
+    info[MPMediaItemPropertyAlbumTitle] = @(snapshot.album);
+    info[MPMediaItemPropertyPlaybackDuration] = @(snapshot.durationMs / 1000.0);
+    info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = @(snapshot.positionMs / 1000.0);
+    info[MPNowPlayingInfoPropertyPlaybackRate] = @(snapshot.paused ? 0.0 : 1.0);
+    if (self.infoArtwork) info[MPMediaItemPropertyArtwork] = [[MPMediaItemArtwork alloc] initWithImage:self.infoArtwork];
+    center.nowPlayingInfo = info;
+    __weak PlayerModel* weakSelf = self;
+    [[ImageCache shared] load:@(snapshot.artwork) completion:^(UIImage* image) {
+      PlayerModel* owner = weakSelf;
+      if (!image || !owner || ![owner.infoTrackId isEqualToString:trackId]) return;
+      owner.infoArtwork = image;
+      NSMutableDictionary* updated = [center.nowPlayingInfo mutableCopy] ?: [NSMutableDictionary dictionary];
+      updated[MPMediaItemPropertyArtwork] = [[MPMediaItemArtwork alloc] initWithImage:image];
+      center.nowPlayingInfo = updated;
+    }];
+  }
 }
 - (void)togglePause { ipad_player_command(IPadTogglePause); [self refresh]; }
 - (void)next { ipad_player_command(IPadNext); [self refresh]; }
