@@ -14,11 +14,15 @@ EXECUTABLE=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.p
 test -x "$APP/$EXECUTABLE" || { echo "Info.plist executable $EXECUTABLE missing from bundle" >&2; exit 1; }
 COUNT=$(find "$APP" -maxdepth 1 -name 'ipad-player-*' | wc -l | tr -d ' ')
 test "$COUNT" = 1 || { echo "Bundle has $COUNT executables; rebuild before installing" >&2; exit 1; }
-echo "Installing executable $EXECUTABLE to $IPAD (close the app in the iPad app switcher first)"
+echo "Installing executable $EXECUTABLE to $IPAD (the app is stopped only for the swap)"
 
+# Upload while the app may still be running: on a locked iPad, background audio is
+# what keeps Wi-Fi awake, so the app is stopped only right before the swap.
+ssh "${SSH_OPTS[@]}" "$IPAD" 'rm -rf /Applications/iPad2MediaPlayer.app.staging'
 scp -r -O "${SSH_OPTS[@]}" "$APP" "$IPAD:/Applications/iPad2MediaPlayer.app.staging"
 ssh "${SSH_OPTS[@]}" "$IPAD" 'set -eu
 cd /Applications
+killall -9 ipad-player-* 2>/dev/null || true
 rm -rf iPad2MediaPlayer.app.previous
 if [ -d iPad2MediaPlayer.app ]; then mv iPad2MediaPlayer.app iPad2MediaPlayer.app.previous; fi
 mv iPad2MediaPlayer.app.staging iPad2MediaPlayer.app
