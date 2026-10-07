@@ -1,0 +1,27 @@
+[
+  {
+    "path": "native-player/cspot/cspot/bell/main/io/HTTPClient.cpp",
+    "before": "6853000e7b35b48f825ab946003271b0cd671815b939c950fd63ca9895333b8f",
+    "after": "61aac9e17ee3c1e7f797fdd5a93cc5bb26ed0a0c88c710534a2c7a20aa1acee7"
+  },
+  {
+    "path": "native-player/cspot/cspot/bell/main/io/include/HTTPClient.h",
+    "before": "9344251c03325d0851594484f40211c023b45f43b9289104e1e0faf54616bdf3",
+    "after": "1854011e586c087a574474af868cfceedc8a7acf21cca98543d9ab374043f957"
+  },
+  {
+    "path": "native-player/cspot/cspot/include/AccessKeyFetcher.h",
+    "before": "6a1f71caf01c6b1f02cfa696b12079726320835382bd0d42f92434841a18762c",
+    "after": "f2b61184ece6ad1c345a6af3b62603a5ad52ff79062c97261048bbbcf71c0547"
+  },
+  {
+    "path": "native-player/cspot/cspot/src/AccessKeyFetcher.cpp",
+    "before": "faf86ee8bb762781accae19d81721e1359eb58edcd41495ed6ede205251a3135",
+    "after": "059bf79e3a6aaf9de2cb8b719dd337bd7aeab3ce9b3f6cbbcccf44fe293a0999"
+  },
+  {
+    "path": "native-player/ios/auth/PLAYBACK-TOKEN.md",
+    "before": null,
+    "after": "5fe7f507782e9d5d16a032b62e5379399d447ce7dcc88af3da0edb3cee5debb4"
+  }
+]

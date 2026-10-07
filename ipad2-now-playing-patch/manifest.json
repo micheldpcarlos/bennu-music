@@ -1,0 +1,37 @@
+[
+  {
+    "path": "native-player/cspot/targets/cli/CliPlayer.cpp",
+    "before": "1a24edc6468dd0fb5d7c55a4911b73458f0c8c6987c17b8db92c776e7a2cc066",
+    "after": "fa68cfbdc13260c25ac980a5ab4a8e658cfd3df21ce1288b020c068ebcd18ab9"
+  },
+  {
+    "path": "native-player/cspot/targets/cli/main.cpp",
+    "before": "63cc18ea4b5c1f0877ab455ed839c28b5d440a222ce53ab5251fef43161bb7e5",
+    "after": "c5341bb4afcf3cb587e6f60ea2f062041f25bd5e8fa5182b6feaad4823cbb93d"
+  },
+  {
+    "path": "native-player/ios/PlayerBridge.cpp",
+    "before": null,
+    "after": "a39441bf86c7f5dce413055e337d999504bf1a6d3a2c235da5dac8d77ad1a871"
+  },
+  {
+    "path": "native-player/ios/PlayerBridge.h",
+    "before": null,
+    "after": "fb022a4359159b2076928e3aaae99ac465f2b2bece9682b9633cdf26573ccde3"
+  },
+  {
+    "path": "native-player/ios/app/AppMain.mm",
+    "before": "e72058a3bb7b7b444be0a669b67035413e972324f8fe098b73e2279973098009",
+    "after": "74b1e2e6c1886f2752515604041dc0cb870a0d5793c236a807c243702fea6a40"
+  },
+  {
+    "path": "native-player/ios/app/NowPlaying.inc",
+    "before": null,
+    "after": "256afbfd22ef85a714902837a8115f7c6d672ee62dc06a573a8f7e6950f4005d"
+  },
+  {
+    "path": "native-player/ios/app/application.cmake",
+    "before": "b2dc111d7c92eda80403a1e5e17b6598f35994462cf692cf3aceae586caeb75c",
+    "after": "62efb8e739b315b5f3358d35f91adc28a7c884b96db8c529f5188ad6bcea5a05"
+  }
+]

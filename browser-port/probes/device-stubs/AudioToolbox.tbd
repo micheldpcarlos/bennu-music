@@ -1,0 +1,10 @@
+--- !tapi-tbd
+tbd-version: 4
+targets: [ armv7-ios ]
+install-name: /System/Library/Frameworks/AudioToolbox.framework/AudioToolbox
+current-version: 492
+compatibility-version: 1
+exports:
+  - targets: [ armv7-ios ]
+    symbols: [ _AudioSessionInitialize, _AudioSessionSetProperty, _AudioSessionSetActive, _AudioQueueNewOutput, _AudioQueueAllocateBuffer, _AudioQueueEnqueueBuffer, _AudioQueueStart, _AudioQueueStop, _AudioQueueDispose ]
+...

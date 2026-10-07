@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+
+# Unrelated large research trees (Linux boot / browser experiments)
+/cascadia/
+/linux-build/
+/linux-build.sparsebundle/
+
+# Build outputs and toolchain state
+/native-player/ios/build/
+/native-player/build-venv/
+/native-player/cspot-port-source.tar.gz
+/native-player/deps/
+/browser-port/toolchains/
+/browser-port/legacy-sdks/
+__pycache__/
+*.pyc
+*.dSYM/
+*.ips
+
+# Secrets and device state must never land here
+authBlob.json
+config.json
+*.blob
+*callback*.txt

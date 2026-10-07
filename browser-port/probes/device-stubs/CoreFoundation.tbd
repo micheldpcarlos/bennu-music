@@ -1,0 +1,10 @@
+--- !tapi-tbd
+tbd-version: 4
+targets: [ armv7-ios ]
+install-name: /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+current-version: 1290.11
+compatibility-version: 150
+exports:
+  - targets: [ armv7-ios ]
+    symbols: [ _CFRunLoopGetCurrent, _CFRunLoopRunInMode, _kCFRunLoopCommonModes, _kCFRunLoopDefaultMode ]
+...

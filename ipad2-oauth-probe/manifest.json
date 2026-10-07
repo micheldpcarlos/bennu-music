@@ -1,0 +1,12 @@
+[
+  {
+    "path": "native-player/ios/auth-probe/AuthProbe.m",
+    "before": null,
+    "after": "73e6bb1e597fdffbdcf34074962b300e44815dc958251997cc9165e084c75e5b"
+  },
+  {
+    "path": "native-player/ios/auth-probe/build-probe.sh",
+    "before": null,
+    "after": "5fa85da71de51c6f595cb5c104076db2580b52bee9667e327e3a41509ee35113"
+  }
+]

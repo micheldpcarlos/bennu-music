@@ -1,0 +1,62 @@
+[
+  {
+    "path": "native-player/cspot/cspot/src/Session.cpp",
+    "before": "fe1f47368c7e8449b8657ae96d0543111e42ccbfafb0b3ebacda515cae21bce0",
+    "after": "8f7bdf2dd25714ba685c42a6eacf2a206d8c11e63df61d4577bb714f22714014"
+  },
+  {
+    "path": "native-player/cspot/targets/cli/main.cpp",
+    "before": "c5341bb4afcf3cb587e6f60ea2f062041f25bd5e8fa5182b6feaad4823cbb93d",
+    "after": "2bd29db20f674d6235a9808d517c4c247d9bf7e9ffb76135ee4036111eea3bd8"
+  },
+  {
+    "path": "native-player/ios/app/application.cmake",
+    "before": "5d4d307700b981640e1cf4cd378d6e65425a169acf5a3d54de5a548ea45fb8ab",
+    "after": "2d8d305d595d83e96d5beca07ff07db0c86c3aa2a871998b42a720cdcad69f24"
+  },
+  {
+    "path": "native-player/ios/auth/AuthStore.h",
+    "before": null,
+    "after": "d45dea1efe89618c7ed4126fb30a2ecc4f416fa78354dae21da8e125ce95bae1"
+  },
+  {
+    "path": "native-player/ios/auth/AuthStore.m",
+    "before": null,
+    "after": "88269efe253735bc3e2064399b0f8a0855f99336acf6a976fec77695995859bc"
+  },
+  {
+    "path": "native-player/ios/auth/CMakeLists.txt",
+    "before": null,
+    "after": "ca7aebb550b6d195a0ce4863acc5254844ef3ca606e9669d85b534cc6661520f"
+  },
+  {
+    "path": "native-player/ios/auth/Entitlements.plist",
+    "before": null,
+    "after": "69ce83f9f866f09c9fc7409654c6071b8bcd31801266dd5ee8c5e29c56315acc"
+  },
+  {
+    "path": "native-player/ios/auth/PairingTest.cpp",
+    "before": null,
+    "after": "c48e46d58ddab5a95017d3f0f0fec75fb03cccee8bab20f82170a938fe5a0c0f"
+  },
+  {
+    "path": "native-player/ios/auth/build-login-app.sh",
+    "before": null,
+    "after": "88429eb6697328784c3e8f40131ff6aae33a3b0230eefd26c788d06ed61002e4"
+  },
+  {
+    "path": "native-player/ios/auth/build-pairing.sh",
+    "before": null,
+    "after": "b6bd0449649dfec6c7852423a1ae880998ac328921b1e1e1cc3cbdc0cda3ddb7"
+  },
+  {
+    "path": "native-player/ios/auth/pair-player.py",
+    "before": null,
+    "after": "52667646326f55729aa0d97d546b0ff9b7c0487cd8162c181cc78f62675ab2ee"
+  },
+  {
+    "path": "native-player/ios/auth/requirements.txt",
+    "before": null,
+    "after": "c45d05971475669df6f3d0126dc73edab04cce12d27cfca05589258db1a88173"
+  }
+]

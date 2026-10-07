@@ -1,0 +1,10 @@
+--- !tapi-tbd
+tbd-version: 4
+targets: [ armv7-ios ]
+install-name: /usr/lib/libSystem.B.dylib
+current-version: 1226.10.1
+compatibility-version: 1
+exports:
+  - targets: [ armv7-ios ]
+    symbols: [ _memset, _puts, _fprintf, _fflush, _exit, ___stderrp, ___stdoutp, _sin, _fmin, ___stack_chk_guard, ___stack_chk_fail, __Unwind_SjLj_Register, __Unwind_SjLj_Resume, __Unwind_SjLj_Unregister, ___divsi3, ___udivsi3, _printf, _strlen, _pthread_create, _pthread_getspecific, _pthread_setspecific, ___assert_rtn, _memcmp ]
+...
