@@ -5,6 +5,7 @@
 #import "Navigation.h"
 #import "SearchViewController.h"
 #import "PlayerModel.h"
+#import "SetupViewController.h"
 static NSDictionary* queryOf(NSURL* url) {
   NSMutableDictionary* result = [NSMutableDictionary dictionary];
   for (NSString* pair in [url.query componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"&;"]]) {
@@ -56,6 +57,11 @@ BOOL PhoenixHandleURL(NSURL* url) {
     else [navigation popViewControllerAnimated:NO];
   } else if ([action isEqualToString:@"play"]) {
     [[PlayerModel shared] playContext:query[@"uri"] name:query[@"name"] ?: @"" shuffle:[query[@"shuffle"] boolValue]];
+  } else if ([action isEqualToString:@"setup"]) {
+    if (tabs.presentedViewController) [tabs dismissViewControllerAnimated:NO completion:nil];
+    UIViewController* setup = [[SetupViewController alloc] init];
+    setup.modalPresentationStyle = UIModalPresentationFullScreen;
+    [tabs presentViewController:setup animated:NO completion:nil];
   } else if ([action isEqualToString:@"scroll"]) {
     UINavigationController* navigation = (UINavigationController*)tabs.selectedViewController;
     PhoenixViewController* top = (PhoenixViewController*)navigation.topViewController;

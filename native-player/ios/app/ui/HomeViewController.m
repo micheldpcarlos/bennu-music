@@ -5,7 +5,7 @@
 #import "CatalogClient.h"
 #import "PlayerModel.h"
 #import "ImageCache.h"
-#import "../../auth/QRSetup.h"
+#import "SetupViewController.h"
 enum { HomeRecent = 0, HomePlaylists, HomeCount };
 @interface HomeViewController () <UITableViewDataSource, UITableViewDelegate>
 @property(nonatomic, strong) NSArray* recent;
@@ -84,7 +84,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   }];
 }
 - (void)openAccount {
-  UIViewController* setup = ipad_qr_setup_controller();
+  UIViewController* setup = [[SetupViewController alloc] init];
   setup.modalPresentationStyle = UIModalPresentationFullScreen;
   [self presentViewController:setup animated:YES completion:nil];
 }

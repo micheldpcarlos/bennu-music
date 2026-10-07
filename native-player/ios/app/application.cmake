@@ -76,6 +76,7 @@ foreach(IPAD_UI_SOURCE ${IPAD_UI_SOURCES})
   target_sources(ipad-media-app PRIVATE "${IPAD_UI_OBJECT}")
 endforeach()
 target_sources(ipad-media-app PRIVATE
+ "${CMAKE_CURRENT_SOURCE_DIR}/auth/DeviceAuth.cpp"
  "${CMAKE_CURRENT_SOURCE_DIR}/Catalog.cpp"
  "${CMAKE_CURRENT_SOURCE_DIR}/SpclientClient.cpp"
  "${CMAKE_CURRENT_SOURCE_DIR}/CatalogProbe.cpp")
