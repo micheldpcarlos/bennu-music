@@ -84,7 +84,7 @@
     NSString* type = [data[@"type"] isKindOfClass:NSString.class] ? [data[@"type"] capitalizedString] : @"Album";
     if ([data[@"year"] intValue]) [details addObject:[NSString stringWithFormat:@"%@ • %d", type, [data[@"year"] intValue]]]; else [details addObject:type];
   } else if ([self.kind isEqualToString:@"playlist"]) {
-    NSString* owner = data[@"owner"]; self.subtitleLabel.text = [owner isKindOfClass:NSString.class] && owner.length ? [NSString stringWithFormat:@"By %@", [owner stringByReplacingOccurrencesOfString:@"spotify:user:" withString:@""]] : @"Playlist";
+    NSString* owner = data[@"owner"]; self.subtitleLabel.text = [owner isKindOfClass:NSString.class] && owner.length ? [NSString stringWithFormat:@"By %@", owner] : @"Playlist";
     NSString* description = data[@"description"]; if ([description isKindOfClass:NSString.class] && description.length) [details addObject:description];
   } else { self.subtitleLabel.text = @"Playlist"; }
   BOOL loading = [data[@"loading"] boolValue];

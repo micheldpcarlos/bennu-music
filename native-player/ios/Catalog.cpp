@@ -385,8 +385,22 @@ void Catalog::playlist(const std::string& id, const Publish& publish) {
   std::string metadata;
   auto uris = contextTrackURIs("spotify:playlist:" + id, &metadata);
   JSON meta = JSON::parse(metadata);
-  JSON summary{{"uri", "spotify:playlist:" + id}, {"name", str(meta, "context_description", 256)},
-      {"description", str(meta, "context_long_description", 1024)}, {"owner", str(meta, "context_owner", 128)},
+  const auto name = str(meta, "context_description", 256);
+  auto description = str(meta, "context_long_description", 1024);
+  if (description == name) description.clear();
+  // context_owner is a user uri; show the profile's display name when it is just an id.
+  auto owner = str(meta, "context_owner", 128);
+  if (owner.compare(0, 13, "spotify:user:") == 0) owner = owner.substr(13);
+  if (owner == "spotify") owner = "Spotify";
+  else if (!owner.empty()) {
+    try {
+      int status = 0;
+      auto profile = JSON::parse(getJSON("/user-profile-view/v3/profile/" + owner, status));
+      auto display = status == 200 ? str(profile, "name", 128) : std::string();
+      if (!display.empty()) owner = display;
+    } catch (...) {}
+  }
+  JSON summary{{"uri", "spotify:playlist:" + id}, {"name", name}, {"description", description}, {"owner", owner},
       {"artwork", imageURL(str(meta, "image_url", 512))}, {"count", uris.size()}};
   hydrate(uris, [&](size_t, bool done) { summary["tracks"] = TRACKLIST(uris); summary["loading"] = !done; publish(summary.dump(), done); });
 }
