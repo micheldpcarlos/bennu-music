@@ -23,5 +23,6 @@ plist = plistlib.loads(Path(sys.argv[1]).read_bytes())
 plist['CFBundleExecutable'] = sys.argv[3]
 Path(sys.argv[2]).write_bytes(plistlib.dumps(plist))
 PY
+cp "$APP_SOURCE"/icon/AppIcon-*.png "$APP_STAGE/"
 xcrun otool -L "$APP_STAGE/$APP_EXECUTABLE"
 echo "Signed experimental app: $APP_STAGE"

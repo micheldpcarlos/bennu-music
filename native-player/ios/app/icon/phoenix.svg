@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#4a1424"/>
+      <stop offset="0.6" stop-color="#1c0b14"/>
+      <stop offset="1" stop-color="#0a0508"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ff8a2a" stop-opacity="0.5"/>
+      <stop offset="0.6" stop-color="#ff5a1f" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#ff5a1f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="fire" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#e8261c"/>
+      <stop offset="0.4" stop-color="#ff7a1a"/>
+      <stop offset="0.75" stop-color="#ffc233"/>
+      <stop offset="1" stop-color="#fff0a0"/>
+    </linearGradient>
+    <linearGradient id="deep" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#9e0f1a"/>
+      <stop offset="0.6" stop-color="#e8401c"/>
+      <stop offset="1" stop-color="#ff9a3a"/>
+    </linearGradient>
+    <linearGradient id="tail" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb43a"/>
+      <stop offset="0.5" stop-color="#ff6a1e"/>
+      <stop offset="1" stop-color="#c8141a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <circle cx="512" cy="540" r="520" fill="url(#glow)"/>
+
+  <!-- back feathers (deep red), three per wing, fanning up and out -->
+  <g fill="url(#deep)">
+    <path d="M470 520 C 380 520, 230 470, 130 300 C 250 380, 330 420, 420 440 Z"/>
+    <path d="M480 470 C 400 420, 300 330, 250 150 C 330 260, 400 330, 470 380 Z"/>
+    <path d="M500 430 C 470 360, 440 250, 450 110 C 480 200, 500 290, 512 380 Z"/>
+    <path d="M554 520 C 644 520, 794 470, 894 300 C 774 380, 694 420, 604 440 Z"/>
+    <path d="M544 470 C 624 420, 724 330, 774 150 C 694 260, 624 330, 554 380 Z"/>
+    <path d="M524 430 C 554 360, 584 250, 574 110 C 544 200, 524 290, 512 380 Z"/>
+  </g>
+
+  <!-- front feathers (bright), slightly lower and shorter -->
+  <g fill="url(#fire)">
+    <path d="M490 580 C 400 590, 270 560, 180 420 C 290 480, 380 500, 460 500 Z"/>
+    <path d="M490 530 C 420 490, 340 410, 320 260 C 390 350, 440 410, 490 440 Z"/>
+    <path d="M534 580 C 624 590, 754 560, 844 420 C 734 480, 644 500, 564 500 Z"/>
+    <path d="M534 530 C 604 490, 684 410, 704 260 C 634 350, 584 410, 534 440 Z"/>
+  </g>
+
+  <!-- tail plumes, attached to the lower body, flowing down -->
+  <g fill="url(#tail)">
+    <path d="M512 660 C 440 700, 360 790, 330 940 C 400 860, 460 820, 512 800 Z"/>
+    <path d="M512 660 C 584 700, 664 790, 694 940 C 624 860, 564 820, 512 800 Z"/>
+    <path d="M512 680 C 470 760, 450 860, 470 980 C 500 900, 524 900, 554 980 C 574 860, 554 760, 512 680 Z"/>
+  </g>
+
+  <!-- body: broad teardrop -->
+  <path d="M512 300 C 590 330, 620 430, 606 540 C 596 620, 560 700, 512 740 C 464 700, 428 620, 418 540 C 404 430, 434 330, 512 300 Z" fill="url(#fire)"/>
+  <ellipse cx="512" cy="520" rx="30" ry="110" fill="#fff6cc" opacity="0.6"/>
+
+  <!-- neck and head -->
+  <path d="M470 330 C 470 280, 480 240, 512 220 C 544 240, 554 280, 554 330 Z" fill="url(#fire)"/>
+  <circle cx="512" cy="222" r="62" fill="url(#fire)"/>
+  <path d="M560 212 L 640 236 L 562 254 Z" fill="#ffd45a"/>
+  <circle cx="530" cy="210" r="10" fill="#1a0608"/>
+  <!-- crest -->
+  <path d="M488 172 C 470 130, 480 90, 512 50 C 506 100, 520 120, 536 136 C 532 100, 552 80, 580 72 C 560 110, 560 140, 548 170 Z" fill="url(#fire)"/>
+</svg>
