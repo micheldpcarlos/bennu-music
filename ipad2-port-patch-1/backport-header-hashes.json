@@ -1,8 +1,0 @@
-{
-  "variant/include/mpark/variant.hpp": "527bc4d0d5cc1b53c195bf78599073330727c967fc81358dd8db7703388fb8bd",
-  "variant/include/mpark/config.hpp": "b7171eb4fe393dd18c1ab99c56fbb8d3c49c7437e57ed044c6bfb0571e7986b0",
-  "variant/include/mpark/in_place.hpp": "9cebd7d28a1c9e6e0fd270af9896d6ebec2e56b5aa49bda9c833c415216c5071",
-  "variant/include/mpark/lib.hpp": "b1e4eed216ebc219cfb142664f2f8c2d5a0f192e0a2981638782785f90d55404",
-  "optional-lite/include/nonstd/optional.hpp": "d351df14a5db6c2186396b9bcf8eba74b5f9abc0f16308f2e4e2919bd0a5093c",
-  "string-view-lite/include/nonstd/string_view.hpp": "05f8d6af3e9178a7e416cc427d613f2c88819504bd6b32d50998eeabe5a6d47e"
-}
