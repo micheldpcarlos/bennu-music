@@ -488,3 +488,39 @@ Load frame 1!  ->  Track name: A Morte do Vaqueiro  ->  AUDIO: queue running=1 s
 Search uses the spclient context-resolve endpoint with the session's own login5 token (see `native-player/ios/catalog/SEARCH-ALTERNATIVES.md`). The public Web API path and the separate own-app OAuth plan are no longer required for search. `IPAD2-PLAYER-HANDOFF.md` predates this and is kept for history only.
 
 Remaining acceptance tests: pause/resume and track change on a locally selected track, screen-off playback with a locally selected track, close/reopen then search again (cache hit expected), token expiry after one hour, and transient network failure. Known limits: tracks only (no album/artist/playlist browsing), ten results, one metadata request per result.
+
+## Phoenix Player — 2026-10-07 evening
+
+The app is now a Spotify-style player with its own browsing UI. Everything below was verified on the iPad through screenshots and logs taken over SSH, except where marked.
+
+### What it does
+
+- **Home**: greeting with your first name, Recently played shelf (Liked Songs, playlists, albums, artists), Your playlists shelf, account button.
+- **Search**: live search as you type; Songs, Artists and Albums sections. Tapping a song plays the result list from that song.
+- **Your Library**: Liked Songs, your playlists, recently played albums, artists and playlists.
+- **Album, playlist and Liked Songs pages**: header with art, Play and Shuffle; track list with the playing track in green; tapping a track plays the list from there (previous/next move through it).
+- **Artist page**: portrait, Popular tracks, Albums and Singles shelves, biography.
+- **Now Playing**: full-screen art, scrubber with seek, shuffle, previous/play/next; mini player docked above the tabs on every screen.
+- **Lock screen and Control Center** show the track and respond to play/pause/next/previous (not yet tested on device).
+- **Setup screen** (account icon on Home): sign in by scanning a QR with the phone (Spotify's device-authorization flow with the desktop client id, no Mac relay), or enable Spotify Connect pairing for the next launch. The QR code is shown and polled correctly on device; the approval step needs a phone and is untested.
+
+### How it works
+
+- `native-player/ios/Catalog.cpp` builds all browsing data from Spotify's internal spclient endpoints with the session's own token: `context-resolve` for search/album/playlist/collection/artist contexts, `metadata/4/{track,album,artist}` JSON for names and covers, `recently-played`, `user-profile-view`. Track metadata is cached on disk under `Documents/phoenix-cache/tracks`.
+- `SpclientClient.cpp` keeps one TLS connection per instance and reuses it, which makes hydrating a 50-track playlist take seconds on the iPad 2 instead of a minute. Two connections work in parallel. Partial results are published while loading.
+- `PlayerBridge` exposes `ipad_catalog_request`/`ipad_catalog_poll` (UI polls JSON), `ipad_player_play_tracks` (multi-track queue with optional shuffle), `ipad_player_seek`. `SpircHandler::loadTracks` loads a whole list as the Spirc queue.
+- `app/ui/` holds the Objective-C screens (compiled one object each by `application.cmake`). `PhoenixTheme` draws all icons at runtime; `ImageCache` caches artwork in memory and on disk and composes 2×2 mosaics for `spotify:mosaic:` covers. Image ids with the WebP-only variant code are rewritten to the JPEG variant because iOS 9 cannot decode WebP.
+- `auth/DeviceAuth.cpp` implements RFC 8628 against `accounts.spotify.com` with the desktop client id, then reuses `OAuthLogin.cpp` to turn the token into reusable AP credentials.
+
+### Developer tools on the device
+
+- `uiopen phoenix://` launches the app; `phoenix://screenshot` writes `Documents/phoenix-screen.png`; `phoenix://search?q=...`, `phoenix://open?uri=spotify:album:...;name=...`, `phoenix://play?uri=...`, `phoenix://nowplaying`, `phoenix://setup`, `phoenix://tab?n=2`, `phoenix://scroll?y=800`, `phoenix://back`. Use `;` between query parameters when sending through `su -c`.
+- Dropping `Documents/phoenix-probe.txt` (one URL per line, optional `| Header: value`) makes the engine fetch each URL with the session token at startup and save the bodies as `phoenix-probe-N.out`.
+- The iPad shell lacks `tail`, `awk`, `wc` and `ps aux`; fetch logs with `cat` and filter on the Mac.
+
+### Known gaps
+
+- No repeat mode (engine support missing), no queue view, no "add to playlist" or like/unlike (those need write endpoints).
+- The private playlist list (`rootlist`) returns 500; Library shows public playlists plus recently played ones.
+- Search for artists and albums is derived from the matching tracks, so obscure artists with no matching tracks will not appear.
+- Landscape layouts are implemented but were only checked in portrait.

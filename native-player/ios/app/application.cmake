@@ -46,23 +46,11 @@ add_custom_command(OUTPUT "${IPAD_AUTH_OBJECT}"
 set_source_files_properties("${IPAD_AUTH_OBJECT}" PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
 target_sources(ipad-media-app PRIVATE "${IPAD_AUTH_OBJECT}")
 
-set(IPAD_QR_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/QRSetup.o")
-add_custom_command(OUTPUT "${IPAD_QR_OBJECT}"
- COMMAND /usr/bin/clang -target armv7-apple-ios9.0 -marm
- -isysroot "${CMAKE_OSX_SYSROOT}" -fobjc-arc -fblocks
- -c "${CMAKE_CURRENT_SOURCE_DIR}/auth/QRSetup.m" -o "${IPAD_QR_OBJECT}"
- DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/auth/QRSetup.m"
- "${CMAKE_CURRENT_SOURCE_DIR}/auth/QRSetup.h"
- "${CMAKE_CURRENT_SOURCE_DIR}/auth/AuthStore.h"
- "${CMAKE_CURRENT_SOURCE_DIR}/auth/OAuthLogin.h"
- VERBATIM)
-set_source_files_properties("${IPAD_QR_OBJECT}" PROPERTIES GENERATED TRUE EXTERNAL_OBJECT TRUE)
-target_sources(ipad-media-app PRIVATE "${IPAD_QR_OBJECT}"
- "${CMAKE_CURRENT_SOURCE_DIR}/auth/OAuthLogin.cpp")
+target_sources(ipad-media-app PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/auth/OAuthLogin.cpp")
 
 # Objective-C screens: one object per app/*.m, all depending on the shared headers.
 file(GLOB IPAD_UI_SOURCES "${IPAD_APP_DIR}/ui/*.m")
-set(IPAD_UI_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/PlayerBridge.h" "${CMAKE_CURRENT_SOURCE_DIR}/auth/QRSetup.h")
+set(IPAD_UI_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/PlayerBridge.h" "${CMAKE_CURRENT_SOURCE_DIR}/auth/DeviceAuth.h")
 file(GLOB IPAD_UI_HEADER_FILES "${IPAD_APP_DIR}/ui/*.h")
 foreach(IPAD_UI_SOURCE ${IPAD_UI_SOURCES})
   get_filename_component(IPAD_UI_NAME "${IPAD_UI_SOURCE}" NAME_WE)
