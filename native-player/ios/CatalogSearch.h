@@ -5,6 +5,7 @@
 #include <mutex>
 #include <string>
 #include <map>
+#include "HTTPClient.h"
 namespace cspot { struct Context; class AccessKeyFetcher; }
 namespace ipad_player {
 class CatalogSearch {
@@ -14,6 +15,13 @@ class CatalogSearch {
   ~CatalogSearch();
   std::string search(const std::string& query);
  private:
+  std::string searchContextResolve(const std::string& query, const std::string& token, unsigned delay);
+  std::string searchWebApi(const std::string& query, const std::string& token, unsigned delay);
+  std::string rateLimited(const std::unique_ptr<bell::HTTPClient::Response>& response, unsigned delay);
+  std::string finish(const std::string& query, const std::string& result);
+  std::string spclientHost();
+  std::string spclient;
+  std::string backend;
   struct Cached { std::chrono::steady_clock::time_point at; std::string json; };
   void savePolicy();
   std::string cooldownMessage();
