@@ -446,3 +446,26 @@ Progress is estimated and read-only. Automatic reconnection, credential persiste
 - Run extended screen-off playback and battery tests.
 
 **Status:** experimental native player with verified local controls; fully independent on-iPad setup and browsing remain the next phase.
+## Checkpoint — 2026-10-07
+
+Source is now under version control: root repository on `main`, `native-player/cspot` on branch `ipad-armv7` (commit 3405325) with its `bell` submodule on a local `ipad-armv7` branch. Build output, the venv, `deps/` and the unrelated Linux/browser research trees are ignored.
+
+### Installed on the iPad
+
+Catalog v2 (`ipad2-catalog-v2`), executable `ipad-player-a80d3a7c76f9`. A rebuild from the checkpointed source reproduces that exact hash.
+
+- Verified: Connect-origin playback, local pause/resume/track change, screen-off audio, saved credentials and login5 tokens after restart.
+- Not verified: any successful catalog search. Every search with the CSpot login5 token returned HTTP 429, including two requests 50 minutes apart. Local track selection after a cold start is therefore still untested.
+
+### Packaging fix
+
+`app/build-app.sh` now starts from an empty staging bundle and `auth/build-login-app.sh` removes the plain-signed executable after producing the Keychain-signed one, so the bundle contains exactly one `ipad-player-*` executable (the previous bundle had eighteen). `auth/install-app.sh` uploads to a staging directory on the device and swaps it in, keeping the old bundle as `iPad2MediaPlayer.app.previous` for rollback. Keychain data is unaffected.
+
+### Next experiment
+
+`token-test/search-probe.py` authorizes with the user's own developer app (PKCE, phone QR, callback pasted visibly on the Mac) and makes one track search. It never contacts the iPad. Its outcome decides whether catalog search moves to a separate own-app OAuth token (handoff steps 3–5) or whether the problem is on the account/app side.
+
+```sh
+source native-player/build-venv/bin/activate
+python3 native-player/ios/token-test/search-probe.py
+```

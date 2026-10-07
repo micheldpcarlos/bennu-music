@@ -17,6 +17,8 @@ TEMP_BINARY="$IOS_DIR/build/player/ipad-media-app-keychain"
 cp "$IOS_DIR/build/player/ipad-media-app" "$TEMP_BINARY"
 ldid -S"$AUTH_DIR/Entitlements.plist" "$TEMP_BINARY"
 NAME="ipad-player-$(shasum -a 256 "$TEMP_BINARY" | cut -c1-12)"
+# Replace the plain-signed executable from build-app.sh so the bundle ships one binary.
+find "$APP" -maxdepth 1 -name 'ipad-player-*' ! -name "$NAME" -delete
 cp "$TEMP_BINARY" "$APP/$NAME"
 chmod 755 "$APP/$NAME"
 python3 - "$APP/Info.plist" "$NAME" <<'PY'
@@ -26,4 +28,7 @@ p=Path(sys.argv[1]);value=plistlib.loads(p.read_bytes())
 value['CFBundleExecutable']=sys.argv[2];p.write_bytes(plistlib.dumps(value))
 PY
 ldid -e "$APP/$NAME"
-echo "Signed app with a private Keychain access group: $APP"
+EXECUTABLES=$(find "$APP" -maxdepth 1 -name 'ipad-player-*' | wc -l | tr -d ' ')
+test "$EXECUTABLES" = 1 || { echo "Bundle has $EXECUTABLES executables; expected 1" >&2; exit 1; }
+test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")" = "$NAME"
+echo "Signed app with a private Keychain access group: $APP (executable $NAME)"
