@@ -1,75 +1,70 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Generate phoenix.svg and the iOS icon PNGs: a rimless gradient disc, a flowing
-phoenix silhouette built from variable-width swooshes, and three sound-wave arcs
-radiating from its beak. Own mark and colors."""
-import math, subprocess, sys
+"""Generate phoenix.svg and the iOS icon PNGs: a symmetric rising phoenix with three
+feather tiers per wing and a flame tail, fire gradient on a dark ground. Own mark."""
+import subprocess, sys
 from pathlib import Path
 HERE = Path(__file__).resolve().parent
-BG = "#16110f"
-INK = "#b5141c"
+BG = "#15100e"
 
 def crescent(p, q, r_outer, r_inner, bulge=1):
-    """Pointed swoosh between p and q: outer arc one way, inner arc back."""
     (x0, y0), (x1, y1) = p, q
     return (f'M{x0} {y0} A{r_outer} {r_outer} 0 0 {bulge} {x1} {y1} '
             f'A{r_inner} {r_inner} 0 0 {1 - bulge} {x0} {y0} Z')
 
-def arc(cx, cy, r, a0, a1):
-    x0, y0 = cx + r * math.cos(math.radians(a0)), cy + r * math.sin(math.radians(a0))
-    x1, y1 = cx + r * math.cos(math.radians(a1)), cy + r * math.sin(math.radians(a1))
-    return f'M{x0:.1f} {y0:.1f} A{r} {r} 0 0 1 {x1:.1f} {y1:.1f}'
+def lens(p, q, r):
+    (x0, y0), (x1, y1) = p, q
+    return f'M{x0} {y0} A{r} {r} 0 0 1 {x1} {y1} A{r} {r} 0 0 1 {x0} {y0} Z'
 
-shapes = [
-    # neck + chest + belly: one crescent bulging to the right
-    crescent((516, 330), (530, 860), 320, 900, 1),
-    # wings: bulge below the chord with the tip high, so each plume rises and curls up
-    crescent((545, 480), (170, 250), 260, 700, 1),
-    crescent((535, 545), (210, 420), 220, 600, 1),
-    crescent((575, 480), (870, 230), 240, 640, 0),
-    crescent((590, 545), (840, 400), 200, 540, 0),
-    # tail plumes flowing down-left, kept inside the disc
-    crescent((530, 860), (300, 880), 160, 500, 1),
-    crescent((530, 860), (400, 960), 120, 380, 1),
-    crescent((530, 860), (590, 950), 90, 260, 0),
-    # crest
-    crescent((520, 272), (610, 230), 60, 200, 0),
-    crescent((532, 286), (620, 276), 60, 200, 0),
+def mirror(p):
+    return (1024 - p[0], p[1])
+
+# left wing tiers: (shoulder, tip, outer radius, inner radius); bulge below the chord so tips curl up
+LEFT = [
+    ((470, 400), (90, 170), 300, 900),
+    ((475, 452), (110, 300), 280, 800),
+    ((480, 502), (170, 440), 220, 700),
+    ((470, 545), (260, 565), 160, 500),
 ]
-body = "\n    ".join(f'<path d="{d}"/>' for d in shapes)
-beak = (405, 300)
-waves = "\n    ".join(
-    f'<path d="{arc(beak[0], beak[1], r, 172, 248)}" stroke-width="{w}"/>'
-    for r, w in [(70, 22), (115, 20), (160, 18)])
+shapes = []
+for p, q, ro, ri in LEFT:
+    shapes.append(crescent(p, q, ro, ri, 1))
+    shapes.append(crescent(mirror(p), mirror(q), ro, ri, 0))
+# body: chest widening then tapering to the tail root
+shapes.append('M512 356 C 584 396, 596 520, 566 640 C 548 704, 526 744, 512 772 '
+              'C 498 744, 476 704, 458 640 C 428 520, 440 396, 512 356 Z')
+# tail flames: tall centre tongue with two shorter curling tongues hugging it
+shapes.append(lens((512, 690), (512, 985), 210))
+shapes.append(crescent((500, 740), (436, 930), 150, 420, 0))
+shapes.append(crescent((524, 740), (588, 930), 150, 420, 1))
+shapes.append(crescent((506, 800), (472, 960), 120, 360, 0))
+shapes.append(crescent((518, 800), (552, 960), 120, 360, 1))
+# head turned right, beak, crest curling back
+shapes.append('<circle cx="512" cy="336" r="38"/>')
+shapes.append('M546 326 L 596 342 L 546 352 Z')
+shapes.append(crescent((500, 304), (452, 256), 60, 160, 1))
+shapes.append(crescent((518, 300), (486, 240), 70, 200, 1))
+
+paths = "\n    ".join(s if s.startswith('<') else f'<path d="{s}"/>' for s in shapes)
 
 SVG = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="disc" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#d8281a"/>
-      <stop offset="0.28" stop-color="#ff8a22"/>
-      <stop offset="0.5" stop-color="#ffe45c"/>
-      <stop offset="0.72" stop-color="#ff9a2a"/>
-      <stop offset="1" stop-color="#d8301a"/>
+    <linearGradient id="fire" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0.15" stop-color="#c41414"/>
+      <stop offset="0.5" stop-color="#f05a1a"/>
+      <stop offset="0.95" stop-color="#ffb22a"/>
     </linearGradient>
-    <radialGradient id="gloss" cx="35%" cy="25%" r="45%">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.25"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    <radialGradient id="glow" cx="50%" cy="48%" r="55%">
+      <stop offset="0" stop-color="#ff6a1e" stop-opacity="0.3"/>
+      <stop offset="0.75" stop-color="#ff6a1e" stop-opacity="0"/>
     </radialGradient>
-    <clipPath id="clip"><circle cx="512" cy="512" r="430"/></clipPath>
   </defs>
   <rect width="1024" height="1024" fill="{BG}"/>
-  <circle cx="512" cy="512" r="430" fill="url(#disc)"/>
-  <g clip-path="url(#clip)" fill="{INK}">
-    {body}
-    <!-- head facing left, beak, crest -->
-    <circle cx="500" cy="300" r="42"/>
-    <path d="M462 290 L 405 300 L 462 312 Z"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <g fill="url(#fire)">
+    {paths}
   </g>
-  <g fill="none" stroke="{INK}" stroke-linecap="round" clip-path="url(#clip)">
-    {waves}
-  </g>
-  <circle cx="490" cy="294" r="8" fill="#ffe45c"/>
-  <circle cx="512" cy="512" r="430" fill="url(#gloss)"/>
+  <circle cx="522" cy="330" r="6" fill="{BG}"/>
 </svg>
 '''
 
