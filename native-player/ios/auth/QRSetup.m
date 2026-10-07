@@ -169,14 +169,14 @@ static UIImage* qrImage(NSString* url) {
    owner.verifier=nil;owner.state=nil;owner.task=nil;
    fprintf(stderr,"QR AUTH: token response HTTP=%ld network_code=%ld\n",(long)status,(long)error.code);
    if(error || status!=200 || !token.length || [token lengthOfBytesUsingEncoding:NSUTF8StringEncoding]>16384){[owner fail:[NSString stringWithFormat:@"Token exchange failed (HTTP %ld, network %ld).\nTap New QR to retry.",(long)status,(long)error.code]];return;}
-   owner.status.text=@"Spotify authorization succeeded.\nChecking CSpot login and reusable credentials…";
+   owner.status.text=@"Spotify authorization succeeded.\nChecking player login and reusable credentials…";
    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT,0),^{
     @autoreleasepool {
      char credentials[4096]={};int passed=ipad_oauth_reusable_credentials(token.UTF8String,credentials,sizeof(credentials));
      NSString* record=passed?[NSString stringWithUTF8String:credentials]:nil;memset(credentials,0,sizeof(credentials));
      dispatch_async(dispatch_get_main_queue(),^{
       IPadQRController* current=weakSelf;if(!current || current.cancelled)return;
-      if(!passed || !record){[current fail:@"CSpot account login failed. Check QR AUTH logs and try New QR."];return;}
+      if(!passed || !record){[current fail:@"Player account login failed. Check QR AUTH logs and try New QR."];return;}
       if(!ipad_auth_save(record.UTF8String)){[current fail:@"Keychain save failed. Check the AUTH status in the app log."];return;}
       fprintf(stderr,"QR AUTH: account saved in Keychain\n");current.done=YES;current.busy=NO;current.renewButton.enabled=YES;
       current.status.text=@"Account saved in Keychain.\nReturn to the player. A waiting player will connect automatically.\nIf another account is already playing, close and reopen the app to switch.";

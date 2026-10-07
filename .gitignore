@@ -23,3 +23,10 @@ authBlob.json
 config.json
 *.blob
 *callback*.txt
+
+# Vendored upstream extras not needed for the build
+/native-player/cspot/cspot/bell/external/nlohmann_json/docs/
+/native-player/cspot/cspot/bell/external/nanopb/tests/fuzztest/
+/native-player/cspot/build-macos/
+/native-player/cspot/cspot/bell/external/nlohmann_json/tests/
+/native-player/cspot/cspot/bell/external/nlohmann_json/tools/
