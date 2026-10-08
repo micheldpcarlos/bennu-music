@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "HomeViewController.h"
-#import "PhoenixTheme.h"
-#import "PhoenixCells.h"
+#import "BennuTheme.h"
+#import "BennuCells.h"
 #import "CatalogClient.h"
 #import "PlayerModel.h"
 #import "ImageCache.h"
@@ -31,16 +31,16 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
   [self.table registerClass:ShelfCell.class forCellReuseIdentifier:@"shelf"];
   [self.table registerClass:SectionHeader.class forHeaderFooterViewReuseIdentifier:@"header"];
   self.header = [[UIView alloc] init];
-  self.greeting = [[UILabel alloc] init]; self.greeting.font = [PhoenixTheme bold:30]; self.greeting.textColor = [PhoenixTheme text];
+  self.greeting = [[UILabel alloc] init]; self.greeting.font = [BennuTheme bold:30]; self.greeting.textColor = [BennuTheme text];
   self.accountButton = [UIButton buttonWithType:UIButtonTypeCustom];
-  [self.accountButton setImage:[PhoenixTheme icon:@"account" size:30 color:[PhoenixTheme text]] forState:UIControlStateNormal];
+  [self.accountButton setImage:[BennuTheme icon:@"account" size:30 color:[BennuTheme text]] forState:UIControlStateNormal];
   [self.accountButton addTarget:self action:@selector(openAccount) forControlEvents:UIControlEventTouchUpInside];
   self.accountButton.imageView.contentMode = UIViewContentModeScaleAspectFill;
   self.accountButton.clipsToBounds = YES;
-  self.status = [[UILabel alloc] init]; self.status.font = [PhoenixTheme regular:14]; self.status.textColor = [PhoenixTheme subtext]; self.status.numberOfLines = 2;
+  self.status = [[UILabel alloc] init]; self.status.font = [BennuTheme regular:14]; self.status.textColor = [BennuTheme subtext]; self.status.numberOfLines = 2;
   for (UIView* view in @[self.greeting, self.accountButton, self.status]) [self.header addSubview:view];
   self.table.tableHeaderView = self.header;
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:BennuTrackChanged object:nil];
   [self playerChanged];   // the view may be created after the engine is already Ready; the notification only fires on changes
   [self renderGreeting];
 }
@@ -62,7 +62,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
   PlayerModel* model = [PlayerModel shared];
   IPadPlayerSnapshot snapshot = model.snapshot;
   if (snapshot.state == IPadReady && !self.loadedOnce) { self.loadedOnce = YES; [self load]; }
-  if (snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; self.radios = nil; self.releases = nil; [self.accountButton setImage:[PhoenixTheme icon:@"account" size:30 color:[PhoenixTheme text]] forState:UIControlStateNormal]; self.recent = nil; self.playlists = nil; [self renderGreeting]; [self.table reloadData]; }
+  if (snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; self.radios = nil; self.releases = nil; [self.accountButton setImage:[BennuTheme icon:@"account" size:30 color:[BennuTheme text]] forState:UIControlStateNormal]; self.recent = nil; self.playlists = nil; [self renderGreeting]; [self.table reloadData]; }
   if (snapshot.state == IPadFailed) self.status.text = [NSString stringWithFormat:@"%s Close and reopen the app to reconnect.", snapshot.error];
   else if (snapshot.reconnecting) self.status.text = @"Connection lost. Reconnecting to Spotify…";
   else if (snapshot.state == IPadConnecting) self.status.text = @"Connecting to Spotify…";
@@ -74,7 +74,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
   __weak HomeViewController* weakSelf = self;
   self.recentRequest = [[CatalogClient shared] request:@"recent" argument:@"" update:^(NSDictionary* json, BOOL done) {
     HomeViewController* owner = weakSelf; if (!owner) return;
-    if (json[@"error"]) { owner.status.text = json[@"error"]; if ([json[@"unavailable"] boolValue]) owner.status.textColor = [PhoenixTheme green]; return; }
+    if (json[@"error"]) { owner.status.text = json[@"error"]; if ([json[@"unavailable"] boolValue]) owner.status.textColor = [BennuTheme green]; return; }
     NSMutableArray* items = [NSMutableArray arrayWithObject:@{@"uri": @"collection", @"name": @"Liked Songs", @"subtitle": @"Playlist", @"artwork": @"", @"type": @"collection"}];
     if ([json[@"items"] isKindOfClass:NSArray.class]) [items addObjectsFromArray:json[@"items"]];
     owner.recent = items;
@@ -154,7 +154,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
     NSString* uri = item[@"uri"];
     if ([uri isEqualToString:@"collection"]) uri = @"spotify:user:me:collection";
     if ([item[@"type"] isEqualToString:@"station"]) { [[PlayerModel shared] playContext:uri name:item[@"name"] shuffle:NO]; return; }
-    PhoenixOpen(uri, item[@"name"], item[@"artwork"]);
+    BennuOpen(uri, item[@"name"], item[@"artwork"]);
   };
   return shelf;
 }

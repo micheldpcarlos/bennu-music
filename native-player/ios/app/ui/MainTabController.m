@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "MainTabController.h"
-#import "PhoenixTheme.h"
+#import "BennuTheme.h"
 #import "MiniPlayerView.h"
 #import "NowPlayingViewController.h"
 #import "HomeViewController.h"
@@ -18,19 +18,19 @@ static MainTabController* sharedTabController;
   UINavigationController* navigation = [[UINavigationController alloc] initWithRootViewController:root];
   navigation.navigationBarHidden = YES;
   navigation.tabBarItem = [[UITabBarItem alloc] initWithTitle:title
-      image:[PhoenixTheme icon:icon size:26 color:[PhoenixTheme subtext]]
-      selectedImage:[PhoenixTheme icon:icon size:26 color:[PhoenixTheme text]]];
+      image:[BennuTheme icon:icon size:26 color:[BennuTheme subtext]]
+      selectedImage:[BennuTheme icon:icon size:26 color:[BennuTheme text]]];
   return navigation;
 }
 - (void)viewDidLoad {
   [super viewDidLoad];
   sharedTabController = self;
-  self.view.backgroundColor = [PhoenixTheme background];
+  self.view.backgroundColor = [BennuTheme background];
   self.tabBar.barTintColor = [UIColor blackColor];
   self.tabBar.translucent = NO;
-  self.tabBar.tintColor = [PhoenixTheme text];
-  [[UITabBarItem appearance] setTitleTextAttributes:@{NSForegroundColorAttributeName: [PhoenixTheme subtext]} forState:UIControlStateNormal];
-  [[UITabBarItem appearance] setTitleTextAttributes:@{NSForegroundColorAttributeName: [PhoenixTheme text]} forState:UIControlStateSelected];
+  self.tabBar.tintColor = [BennuTheme text];
+  [[UITabBarItem appearance] setTitleTextAttributes:@{NSForegroundColorAttributeName: [BennuTheme subtext]} forState:UIControlStateNormal];
+  [[UITabBarItem appearance] setTitleTextAttributes:@{NSForegroundColorAttributeName: [BennuTheme text]} forState:UIControlStateSelected];
   self.viewControllers = @[
     [self tab:[[HomeViewController alloc] init] title:@"Home" icon:@"home"],
     [self tab:[[SearchViewController alloc] init] title:@"Search" icon:@"search"],
@@ -40,7 +40,7 @@ static MainTabController* sharedTabController;
   self.miniPlayer.onTap = ^{ [weakSelf showNowPlaying]; };
   [self.view addSubview:self.miniPlayer];
   [[PlayerModel shared] start];
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixPlayerChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:BennuMusicChanged object:nil];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
 // No saved account: the engine stays in the waiting state, so open the welcome setup.

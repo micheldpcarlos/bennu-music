@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "SetupViewController.h"
-#import "PhoenixTheme.h"
+#import "BennuTheme.h"
 #import "PlayerModel.h"
 #import "../../auth/DeviceAuth.h"
 #import "../../auth/AuthStore.h"
@@ -37,22 +37,22 @@
   [parent addSubview:label]; return label;
 }
 - (UIView*)card {
-  UIView* card = [[UIView alloc] init]; card.backgroundColor = [PhoenixTheme surface]; card.layer.cornerRadius = 10;
+  UIView* card = [[UIView alloc] init]; card.backgroundColor = [BennuTheme surface]; card.layer.cornerRadius = 10;
   [self.view addSubview:card]; return card;
 }
 - (void)viewDidLoad {
   [super viewDidLoad];
-  self.view.backgroundColor = [PhoenixTheme background];
+  self.view.backgroundColor = [BennuTheme background];
   self.closeButton = [UIButton buttonWithType:UIButtonTypeCustom];
-  [self.closeButton setImage:[PhoenixTheme icon:@"close" size:28 color:[PhoenixTheme text]] forState:UIControlStateNormal];
+  [self.closeButton setImage:[BennuTheme icon:@"close" size:28 color:[BennuTheme text]] forState:UIControlStateNormal];
   [self.closeButton addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:self.closeButton];
-  self.titleLabel = [self label:[PhoenixTheme bold:30] color:[PhoenixTheme text] in:self.view];
-  self.titleLabel.text = self.welcome ? @"Welcome to Phoenix Player" : @"Connect Spotify";
+  self.titleLabel = [self label:[BennuTheme bold:30] color:[BennuTheme text] in:self.view];
+  self.titleLabel.text = self.welcome ? @"Welcome to Bennu Music" : @"Connect Spotify";
   self.closeButton.hidden = self.welcome;
-  self.signOutButton = [PhoenixTheme pillButton:@"Sign out"];
-  self.signOutButton.backgroundColor = [PhoenixTheme card];
-  [self.signOutButton setTitleColor:[PhoenixTheme text] forState:UIControlStateNormal];
+  self.signOutButton = [BennuTheme pillButton:@"Sign out"];
+  self.signOutButton.backgroundColor = [BennuTheme card];
+  [self.signOutButton setTitleColor:[BennuTheme text] forState:UIControlStateNormal];
   [self.signOutButton addTarget:self action:@selector(signOut) forControlEvents:UIControlEventTouchUpInside];
   self.signOutButton.hidden = YES;
   [self.view addSubview:self.signOutButton];
@@ -60,38 +60,38 @@
   self.avatar.contentMode = UIViewContentModeScaleAspectFill; self.avatar.clipsToBounds = YES; self.avatar.layer.cornerRadius = 40;
   self.avatar.hidden = YES;
   [self.view addSubview:self.avatar];
-  self.accountLabel = [self label:[PhoenixTheme regular:15] color:[PhoenixTheme subtext] in:self.view];
+  self.accountLabel = [self label:[BennuTheme regular:15] color:[BennuTheme subtext] in:self.view];
   self.qrCard = [self card];
-  self.qrTitle = [self label:[PhoenixTheme bold:20] color:[PhoenixTheme text] in:self.qrCard];
+  self.qrTitle = [self label:[BennuTheme bold:20] color:[BennuTheme text] in:self.qrCard];
   self.qrTitle.text = @"Sign in with your phone";
   self.qrImage = [[UIImageView alloc] init]; self.qrImage.backgroundColor = [UIColor whiteColor]; self.qrImage.layer.cornerRadius = 8; self.qrImage.clipsToBounds = YES;
   self.qrImage.layer.magnificationFilter = kCAFilterNearest; self.qrImage.contentMode = UIViewContentModeScaleAspectFit;
   [self.qrCard addSubview:self.qrImage];
-  self.codeLabel = [self label:[UIFont fontWithName:@"Menlo-Bold" size:34] ?: [PhoenixTheme bold:34] color:[PhoenixTheme green] in:self.qrCard];
+  self.codeLabel = [self label:[UIFont fontWithName:@"Menlo-Bold" size:34] ?: [BennuTheme bold:34] color:[BennuTheme green] in:self.qrCard];
   self.codeLabel.textAlignment = NSTextAlignmentCenter;
-  self.qrHint = [self label:[PhoenixTheme regular:15] color:[PhoenixTheme subtext] in:self.qrCard];
+  self.qrHint = [self label:[BennuTheme regular:15] color:[BennuTheme subtext] in:self.qrCard];
   self.qrHint.text = @"1. Scan the code with your phone's camera, or open spotify.com/pair on any device.\n2. Sign in to Spotify and enter the code.\n3. Come back here. The iPad finishes on its own.";
-  self.qrStatus = [self label:[PhoenixTheme regular:14] color:[PhoenixTheme text] in:self.qrCard];
-  self.codeButton = [PhoenixTheme pillButton:@"Get a new code"];
+  self.qrStatus = [self label:[BennuTheme regular:14] color:[BennuTheme text] in:self.qrCard];
+  self.codeButton = [BennuTheme pillButton:@"Get a new code"];
   [self.codeButton addTarget:self action:@selector(newCode) forControlEvents:UIControlEventTouchUpInside];
   [self.qrCard addSubview:self.codeButton];
-  self.retryButton = [PhoenixTheme pillButton:@"Retry login"];
+  self.retryButton = [BennuTheme pillButton:@"Retry login"];
   [self.retryButton addTarget:self action:@selector(retryLogin) forControlEvents:UIControlEventTouchUpInside];
   self.retryButton.hidden = YES;
   [self.qrCard addSubview:self.retryButton];
   self.connectCard = [self card];
-  self.connectTitle = [self label:[PhoenixTheme bold:20] color:[PhoenixTheme text] in:self.connectCard];
+  self.connectTitle = [self label:[BennuTheme bold:20] color:[BennuTheme text] in:self.connectCard];
   self.connectTitle.text = @"Or use your phone's Spotify app";
-  self.connectHint = [self label:[PhoenixTheme regular:15] color:[PhoenixTheme subtext] in:self.connectCard];
-  self.connectHint.text = @"Play something in Spotify on your phone, tap the devices icon and choose “Phoenix Player”. The iPad signs in with that account and keeps it.";
+  self.connectHint = [self label:[BennuTheme regular:15] color:[BennuTheme subtext] in:self.connectCard];
+  self.connectHint.text = @"Play something in Spotify on your phone, tap the devices icon and choose “Bennu Music”. The iPad signs in with that account and keeps it.";
   self.connectButton = nil;
   self.visibilityCard = [self card];
-  self.visibilityTitle = [self label:[PhoenixTheme bold:17] color:[PhoenixTheme text] in:self.visibilityCard];
+  self.visibilityTitle = [self label:[BennuTheme bold:17] color:[BennuTheme text] in:self.visibilityCard];
   self.visibilityTitle.text = @"Visible on this network";
-  self.visibilityHint = [self label:[PhoenixTheme regular:14] color:[PhoenixTheme subtext] in:self.visibilityCard];
-  self.visibilityHint.text = @"Phones on this Wi-Fi can choose Phoenix Player in Spotify's device list. Turning it off keeps the QR sign-in available.";
+  self.visibilityHint = [self label:[BennuTheme regular:14] color:[BennuTheme subtext] in:self.visibilityCard];
+  self.visibilityHint.text = @"Phones on this Wi-Fi can choose Bennu Music in Spotify's device list. Turning it off keeps the QR sign-in available.";
   self.visibilitySwitch = [[UISwitch alloc] init];
-  self.visibilitySwitch.onTintColor = [PhoenixTheme green];
+  self.visibilitySwitch.onTintColor = [BennuTheme green];
   self.visibilitySwitch.on = ipad_engine_discoverable() != 0;
   [self.visibilitySwitch addTarget:self action:@selector(visibilityChanged) forControlEvents:UIControlEventValueChanged];
   [self.visibilityCard addSubview:self.visibilitySwitch];
@@ -105,9 +105,9 @@
   self.qrCard.hidden = ready; self.connectCard.hidden = ready;
   self.signOutButton.hidden = !ready;
   self.avatar.hidden = !ready;
-  if (ready) [[ImageCache shared] load:[PlayerModel shared].accountImage into:self.avatar placeholder:[PhoenixTheme icon:@"account" size:80 color:[PhoenixTheme subtext]]];
+  if (ready) [[ImageCache shared] load:[PlayerModel shared].accountImage into:self.avatar placeholder:[BennuTheme icon:@"account" size:80 color:[BennuTheme subtext]]];
   [self.view setNeedsLayout];
-  self.titleLabel.text = ready ? @"Spotify account" : self.welcome ? @"Welcome to Phoenix Player" : @"Connect Spotify";
+  self.titleLabel.text = ready ? @"Spotify account" : self.welcome ? @"Welcome to Bennu Music" : @"Connect Spotify";
 }
 - (void)viewWillAppear:(BOOL)animated {
   [super viewWillAppear:animated];
@@ -193,7 +193,7 @@
     self.qrStatus.text = @"Approved. Signing the player in…";
   } else if ([phase isEqualToString:@"done"]) {
     self.qrStatus.text = @"Signed in. The player is connecting.";
-    self.qrStatus.textColor = [PhoenixTheme green];
+    self.qrStatus.textColor = [BennuTheme green];
     [NSNotificationCenter.defaultCenter postNotificationName:@"IPadAccountPaired" object:nil];
   } else if ([phase isEqualToString:@"failed"]) {
     self.qrStatus.text = state[@"message"] ?: @"Sign-in failed.";
@@ -201,7 +201,7 @@
   } else {
     self.qrStatus.text = @"";
   }
-  if (![phase isEqualToString:@"done"]) self.qrStatus.textColor = [PhoenixTheme text];
+  if (![phase isEqualToString:@"done"]) self.qrStatus.textColor = [BennuTheme text];
   if (![phase isEqualToString:@"failed"]) self.retryButton.hidden = YES;
 }
 - (void)retryLogin { if (!ipad_device_auth_retry()) self.qrStatus.text = @"Nothing to retry. Get a new code."; }

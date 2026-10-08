@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for looking at Phoenix Player. The project targets a single, very old device, so most of
+Thanks for looking at Bennu Music. The project targets a single, very old device, so most of
 the rules below exist to keep builds working on it.
 
 ## Ground rules
@@ -20,7 +20,7 @@ the rules below exist to keep builds working on it.
   `std::string_view` or `std::variant`; use the backports in `native-player/compat/vendor`
   through `CSpotCompat.h`.
 - Objective-C UI is frame-based UIKit (no Auto Layout constraints, no storyboards, no asset
-  catalogs); icons are drawn at runtime in `PhoenixTheme`.
+  catalogs); icons are drawn at runtime in `BennuTheme`.
 - Each `.m` file under `native-player/ios/app/ui/` compiles to its own object through the glob
   in `application.cmake`; new screens need no CMake change. Array-typed properties are not
   available in that Objective-C dialect; use ivars.
@@ -32,8 +32,8 @@ the rules below exist to keep builds working on it.
 1. `scripts/build.sh` builds and signs the bundle.
 2. `IPAD=root@<ip> scripts/install.sh` installs it over SSH with a staged swap and keeps the
    previous bundle for rollback.
-3. Drive the app remotely with the `phoenix://` URL scheme (see README, "Developer tools") and
-   pull `Documents/phoenix-screen.png` for screenshots. Separate query parameters with `%26`
+3. Drive the app remotely with the `bennu://` URL scheme (see README, "Developer tools") and
+   pull `Documents/bennu-screen.png` for screenshots. Separate query parameters with `%26`
    when the URL passes through `ssh`.
 4. The iPad shell lacks `tail`, `awk`, `wc` and `ps aux`; `cat` files and filter on the Mac.
 5. The iPad drops Wi-Fi when locked unless audio is playing; keep something playing during

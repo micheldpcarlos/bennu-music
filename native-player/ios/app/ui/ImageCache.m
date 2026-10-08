@@ -23,7 +23,7 @@ static char kImageURLKey;
     config.timeoutIntervalForRequest = 20; config.HTTPMaximumConnectionsPerHost = 4;
     self.session = [NSURLSession sessionWithConfiguration:config];
     NSString* documents = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-    self.directory = [documents stringByAppendingPathComponent:@"phoenix-cache/images"];
+    self.directory = [documents stringByAppendingPathComponent:@"bennu-cache/images"];
     [NSFileManager.defaultManager createDirectoryAtPath:self.directory withIntermediateDirectories:YES attributes:nil error:nil];
     self.inFlight = [NSMutableDictionary dictionary];
   }

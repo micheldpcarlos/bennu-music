@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "VisualizerMenu.h"
 #import "VisualizerView.h"
-#import "PhoenixTheme.h"
+#import "BennuTheme.h"
 @interface VisualizerMenu () <UITableViewDataSource, UITableViewDelegate>
 @property(nonatomic, strong) UIView* backdrop;
 @property(nonatomic, strong) UIView* panel;
@@ -31,15 +31,15 @@
   CGRect anchorFrame = [anchor convertRect:anchor.bounds toView:parent];
   CGFloat width = 460, height = MIN(parent.bounds.size.height - anchorFrame.origin.y - anchorFrame.size.height - 24, 420);
   self.panel = [[UIView alloc] initWithFrame:CGRectMake(parent.bounds.size.width - width - 16, CGRectGetMaxY(anchorFrame) + 6, width, height)];
-  self.panel.backgroundColor = [PhoenixTheme card]; self.panel.layer.cornerRadius = 10; self.panel.clipsToBounds = YES;
+  self.panel.backgroundColor = [BennuTheme card]; self.panel.layer.cornerRadius = 10; self.panel.clipsToBounds = YES;
   [self addSubview:self.panel];
   UILabel* title = [[UILabel alloc] initWithFrame:CGRectMake(16, 0, width - 32, 40)];
-  title.text = @"Visualizations"; title.font = [PhoenixTheme bold:15]; title.textColor = [PhoenixTheme subtext];
+  title.text = @"Visualizations"; title.font = [BennuTheme bold:15]; title.textColor = [BennuTheme subtext];
   [self.panel addSubview:title];
   self.familyTable = [self table]; self.presetTable = [self table];
   self.familyTable.frame = CGRectMake(0, 40, 180, height - 40);
   self.presetTable.frame = CGRectMake(180, 40, width - 180, height - 40);
-  UIView* divider = [[UIView alloc] initWithFrame:CGRectMake(180, 40, 1, height - 40)]; divider.backgroundColor = [PhoenixTheme cardHighlight];
+  UIView* divider = [[UIView alloc] initWithFrame:CGRectMake(180, 40, 1, height - 40)]; divider.backgroundColor = [BennuTheme cardHighlight];
   [self.panel addSubview:self.familyTable]; [self.panel addSubview:self.presetTable]; [self.panel addSubview:divider];
   [parent addSubview:self];
   self.panel.alpha = 0; self.panel.transform = CGAffineTransformMakeScale(0.96, 0.96);
@@ -59,11 +59,11 @@
   NSString* name = isFamily ? self.families[path.row] : [VisualizerView presetsForFamily:self.family][path.row];
   BOOL selected = isFamily ? [name isEqualToString:self.family] : [name isEqualToString:self.preset];
   cell.backgroundColor = [UIColor clearColor];
-  UIView* highlight = [[UIView alloc] init]; highlight.backgroundColor = [PhoenixTheme cardHighlight]; cell.selectedBackgroundView = highlight;
-  cell.textLabel.text = name; cell.textLabel.font = isFamily ? [PhoenixTheme bold:15] : [PhoenixTheme regular:15];
-  cell.textLabel.textColor = selected ? [PhoenixTheme green] : [PhoenixTheme text];
+  UIView* highlight = [[UIView alloc] init]; highlight.backgroundColor = [BennuTheme cardHighlight]; cell.selectedBackgroundView = highlight;
+  cell.textLabel.text = name; cell.textLabel.font = isFamily ? [BennuTheme bold:15] : [BennuTheme regular:15];
+  cell.textLabel.textColor = selected ? [BennuTheme green] : [BennuTheme text];
   cell.accessoryType = isFamily ? UITableViewCellAccessoryDisclosureIndicator : (selected ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone);
-  cell.tintColor = [PhoenixTheme green];
+  cell.tintColor = [BennuTheme green];
   return cell;
 }
 - (void)tableView:(UITableView*)table didSelectRowAtIndexPath:(NSIndexPath*)path {

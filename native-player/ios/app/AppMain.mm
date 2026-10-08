@@ -139,7 +139,7 @@ static void startEngine() {
 }
 - (BOOL)application:(UIApplication*)application openURL:(NSURL*)url sourceApplication:(NSString*)source annotation:(id)annotation {
   std::fprintf(stderr, "APP: opened via url scheme\n");
-  return PhoenixHandleURL(url);
+  return BennuHandleURL(url);
 }
 - (void)applicationDidEnterBackground:(UIApplication*)application {
   (void)application;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import <UIKit/UIKit.h>
-// Async artwork loading with a memory cache and a disk cache under Documents/phoenix-cache/images.
+// Async artwork loading with a memory cache and a disk cache under Documents/bennu-cache/images.
 @interface ImageCache : NSObject
 + (instancetype)shared;
 // Loads url into the image view (placeholder first). Safe to call repeatedly for reused cells:

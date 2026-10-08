@@ -8,9 +8,9 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-static const char* Inbox="/var/mobile/Documents/phoenix-auth-inbox/credentials.json";
+static const char* Inbox="/var/mobile/Documents/bennu-auth-inbox/credentials.json";
 static NSDictionary* query(void) {
- return @{(__bridge id)kSecAttrAccessGroup:@"PHOENIXDEV.org.ipad2mediaplayer.receiver",
+ return @{(__bridge id)kSecAttrAccessGroup:@"BENNUDEV.app.bennu.music",
   (__bridge id)kSecClass:(__bridge id)kSecClassGenericPassword,
   (__bridge id)kSecAttrService:@"org.ipad2mediaplayer.cspot.credentials",
   (__bridge id)kSecAttrAccount:@"primary"};

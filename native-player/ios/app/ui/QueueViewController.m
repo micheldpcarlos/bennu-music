@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "QueueViewController.h"
-#import "PhoenixTheme.h"
-#import "PhoenixCells.h"
+#import "BennuTheme.h"
+#import "BennuCells.h"
 #import "CatalogClient.h"
 #import "PlayerModel.h"
 @interface QueueViewController () <UITableViewDataSource, UITableViewDelegate>
@@ -19,10 +19,10 @@
   [self.table registerClass:TrackCell.class forCellReuseIdentifier:@"track"];
   [self.table registerClass:SectionHeader.class forHeaderFooterViewReuseIdentifier:@"header"];
   self.closeButton = [UIButton buttonWithType:UIButtonTypeCustom];
-  [self.closeButton setImage:[PhoenixTheme icon:@"chevronDown" size:28 color:[PhoenixTheme text]] forState:UIControlStateNormal];
+  [self.closeButton setImage:[BennuTheme icon:@"chevronDown" size:28 color:[BennuTheme text]] forState:UIControlStateNormal];
   [self.closeButton addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:self.closeButton];
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:BennuTrackChanged object:nil];
   [self reload];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; [self.request cancel]; }

@@ -4,8 +4,8 @@
 #import "ImageCache.h"
 #import <MediaPlayer/MediaPlayer.h>
 #import <AVFoundation/AVFoundation.h>
-NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
-NSString* const PhoenixTrackChanged = @"PhoenixTrackChanged";
+NSString* const BennuMusicChanged = @"BennuMusicChanged";
+NSString* const BennuTrackChanged = @"BennuTrackChanged";
 @interface PlayerModel ()
 @property(nonatomic) IPadPlayerSnapshot snapshot;
 @property(nonatomic, copy) NSString* contextName;
@@ -59,10 +59,10 @@ NSString* const PhoenixTrackChanged = @"PhoenixTrackChanged";
   self.snapshot = snapshot;
   if (snapshot.volume != previous.volume) [self applySystemVolume:snapshot.volume / 65535.0f];
   [self updateNowPlayingInfo];
-  [NSNotificationCenter.defaultCenter postNotificationName:PhoenixPlayerChanged object:self];
+  [NSNotificationCenter.defaultCenter postNotificationName:BennuMusicChanged object:self];
   if (strcmp(previous.trackId, snapshot.trackId) != 0 || previous.paused != snapshot.paused || previous.state != snapshot.state ||
       previous.hasTrack != snapshot.hasTrack || previous.reconnecting != snapshot.reconnecting || previous.repeat != snapshot.repeat)
-    [NSNotificationCenter.defaultCenter postNotificationName:PhoenixTrackChanged object:self];
+    [NSNotificationCenter.defaultCenter postNotificationName:BennuTrackChanged object:self];
 }
 - (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
   if (![keyPath isEqualToString:@"outputVolume"]) return;

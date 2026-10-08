@@ -12,7 +12,7 @@
 #include <vector>
 namespace ipad_player {
 void runCatalogProbeIfRequested(std::shared_ptr<cspot::Context> context) {
-  const std::string listPath = "/var/mobile/Documents/phoenix-probe.txt";
+  const std::string listPath = "/var/mobile/Documents/bennu-probe.txt";
   std::ifstream list(listPath);
   if (!list) return;
   std::vector<std::string> urls;
@@ -75,7 +75,7 @@ void runCatalogProbeIfRequested(std::shared_ptr<cspot::Context> context) {
         } catch (...) { keys = bytes.empty() ? "(empty)" : "(not json)"; }
         std::fprintf(stderr, "PROBE %d: %s HTTP=%d bytes=%lu keys=%s\n", index, label.c_str(), status,
             static_cast<unsigned long>(bytes.size()), keys.c_str());
-        std::ofstream body("/var/mobile/Documents/phoenix-probe-" + std::to_string(index) + ".out", std::ios::binary | std::ios::trunc);
+        std::ofstream body("/var/mobile/Documents/bennu-probe-" + std::to_string(index) + ".out", std::ios::binary | std::ios::trunc);
         body << "URL: " << url << "\nHTTP: " << status << "\n\n";
         body.write(reinterpret_cast<const char*>(bytes.data()), std::min<size_t>(bytes.size(), 400000));
       } catch (...) {

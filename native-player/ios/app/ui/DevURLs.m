@@ -28,10 +28,10 @@ static void screenshot(void) {
   UIImage* image = UIGraphicsGetImageFromCurrentImageContext();
   UIGraphicsEndImageContext();
   NSString* documents = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-  BOOL ok = [UIImagePNGRepresentation(image) writeToFile:[documents stringByAppendingPathComponent:@"phoenix-screen.png"] atomically:YES];
+  BOOL ok = [UIImagePNGRepresentation(image) writeToFile:[documents stringByAppendingPathComponent:@"bennu-screen.png"] atomically:YES];
   fprintf(stderr, "DEV: screenshot %s\n", ok ? "saved" : "failed");
 }
-BOOL PhoenixHandleURL(NSURL* url) {
+BOOL BennuHandleURL(NSURL* url) {
   NSString* action = url.host ?: @"";
   NSDictionary* query = queryOf(url);
   MainTabController* tabs = [MainTabController shared];
@@ -44,7 +44,7 @@ BOOL PhoenixHandleURL(NSURL* url) {
     if (index >= 0 && index < (NSInteger)tabs.viewControllers.count) { [tabs dismissViewControllerAnimated:NO completion:nil]; tabs.selectedIndex = index; }
   } else if ([action isEqualToString:@"open"]) {
     [tabs dismissViewControllerAnimated:NO completion:nil];
-    PhoenixOpen(query[@"uri"], query[@"name"] ?: @"", query[@"artwork"] ?: @"");
+    BennuOpen(query[@"uri"], query[@"name"] ?: @"", query[@"artwork"] ?: @"");
   } else if ([action isEqualToString:@"search"]) {
     [tabs dismissViewControllerAnimated:NO completion:nil];
     tabs.selectedIndex = 1;
@@ -68,8 +68,8 @@ BOOL PhoenixHandleURL(NSURL* url) {
     [tabs presentViewController:setup animated:NO completion:nil];
   } else if ([action isEqualToString:@"scroll"]) {
     UINavigationController* navigation = (UINavigationController*)tabs.selectedViewController;
-    PhoenixViewController* top = (PhoenixViewController*)navigation.topViewController;
-    if ([top isKindOfClass:PhoenixViewController.class]) [top.table setContentOffset:CGPointMake(0, [query[@"y"] floatValue]) animated:NO];
+    BennuViewController* top = (BennuViewController*)navigation.topViewController;
+    if ([top isKindOfClass:BennuViewController.class]) [top.table setContentOffset:CGPointMake(0, [query[@"y"] floatValue]) animated:NO];
   } else if ([action isEqualToString:@"vizmenu"]) {
     if (!tabs.presentedViewController) [tabs showNowPlaying];
     NowPlayingViewController* nowPlaying = (NowPlayingViewController*)tabs.presentedViewController;

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "SearchViewController.h"
-#import "PhoenixTheme.h"
-#import "PhoenixCells.h"
+#import "BennuTheme.h"
+#import "BennuCells.h"
 #import "CatalogClient.h"
 #import "PlayerModel.h"
 enum { SearchSongs = 0, SearchArtists, SearchAlbums, SearchCount };
 enum { FilterAll = 0, FilterSongs, FilterArtists, FilterAlbums };
-static NSString* const kRecentSearches = @"PhoenixRecentSearches";
+static NSString* const kRecentSearches = @"BennuRecentSearches";
 
 // Genre tile used by the browse grid.
 @interface CategoryCell : UICollectionViewCell
@@ -16,7 +16,7 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
 - (instancetype)initWithFrame:(CGRect)frame {
   if ((self = [super initWithFrame:frame])) {
     self.contentView.layer.cornerRadius = 8; self.contentView.clipsToBounds = YES;
-    self.nameLabel = [[UILabel alloc] init]; self.nameLabel.font = [PhoenixTheme bold:19]; self.nameLabel.textColor = [PhoenixTheme text]; self.nameLabel.numberOfLines = 2;
+    self.nameLabel = [[UILabel alloc] init]; self.nameLabel.font = [BennuTheme bold:19]; self.nameLabel.textColor = [BennuTheme text]; self.nameLabel.numberOfLines = 2;
     [self.contentView addSubview:self.nameLabel];
   }
   return self;
@@ -71,7 +71,7 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
   UICollectionViewFlowLayout* layout = [[UICollectionViewFlowLayout alloc] init];
   layout.minimumInteritemSpacing = 12; layout.minimumLineSpacing = 12; layout.sectionInset = UIEdgeInsetsMake(8, 16, 24, 16);
   self.browse = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
-  self.browse.backgroundColor = [PhoenixTheme background];
+  self.browse.backgroundColor = [BennuTheme background];
   self.browse.dataSource = self; self.browse.delegate = self;
   self.browse.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
   [self.browse registerClass:CategoryCell.class forCellWithReuseIdentifier:@"category"];
@@ -79,11 +79,11 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
   [self.browse registerClass:UICollectionReusableView.class forSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@"title"];
   [self.view insertSubview:self.browse belowSubview:self.topBar];
   self.header = [[UIView alloc] init];
-  self.titleLabel = [[UILabel alloc] init]; self.titleLabel.font = [PhoenixTheme bold:30]; self.titleLabel.textColor = [PhoenixTheme text]; self.titleLabel.text = @"Search";
+  self.titleLabel = [[UILabel alloc] init]; self.titleLabel.font = [BennuTheme bold:30]; self.titleLabel.textColor = [BennuTheme text]; self.titleLabel.text = @"Search";
   self.field = [[UITextField alloc] init];
   self.field.backgroundColor = [UIColor whiteColor]; self.field.textColor = [UIColor blackColor];
-  self.field.font = [PhoenixTheme regular:17]; self.field.layer.cornerRadius = 6;
-  self.field.leftView = [[UIImageView alloc] initWithImage:[PhoenixTheme icon:@"search" size:22 color:[UIColor blackColor]]];
+  self.field.font = [BennuTheme regular:17]; self.field.layer.cornerRadius = 6;
+  self.field.leftView = [[UIImageView alloc] initWithImage:[BennuTheme icon:@"search" size:22 color:[UIColor blackColor]]];
   self.field.leftView.frame = CGRectMake(0, 0, 40, 44); self.field.leftViewMode = UITextFieldViewModeAlways; self.field.leftView.contentMode = UIViewContentModeCenter;
   self.field.placeholder = @"What do you want to listen to?";
   self.field.returnKeyType = UIReturnKeySearch; self.field.clearButtonMode = UITextFieldViewModeWhileEditing;
@@ -92,8 +92,8 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
   [self.field addTarget:self action:@selector(textChanged) forControlEvents:UIControlEventEditingChanged];
   self.cancelButton = [UIButton buttonWithType:UIButtonTypeCustom];
   [self.cancelButton setTitle:@"Cancel" forState:UIControlStateNormal];
-  [self.cancelButton setTitleColor:[PhoenixTheme text] forState:UIControlStateNormal];
-  self.cancelButton.titleLabel.font = [PhoenixTheme regular:17];
+  [self.cancelButton setTitleColor:[BennuTheme text] forState:UIControlStateNormal];
+  self.cancelButton.titleLabel.font = [BennuTheme regular:17];
   [self.cancelButton addTarget:self action:@selector(cancel) forControlEvents:UIControlEventTouchUpInside];
   self.cancelButton.hidden = YES;
   self.pills = [[UIScrollView alloc] init]; self.pills.showsHorizontalScrollIndicator = NO;
@@ -102,8 +102,8 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
   for (NSUInteger i = 0; i < names.count; i++) {
     UIButton* pill = [UIButton buttonWithType:UIButtonTypeCustom];
     [pill setTitle:names[i] forState:UIControlStateNormal];
-    pill.titleLabel.font = [PhoenixTheme regular:14];
-    pill.layer.cornerRadius = 16; pill.layer.borderWidth = 1; pill.layer.borderColor = [PhoenixTheme cardHighlight].CGColor;
+    pill.titleLabel.font = [BennuTheme regular:14];
+    pill.layer.cornerRadius = 16; pill.layer.borderWidth = 1; pill.layer.borderColor = [BennuTheme cardHighlight].CGColor;
     pill.contentEdgeInsets = UIEdgeInsetsMake(0, 16, 0, 16);
     [pill sizeToFit]; pill.frame = CGRectMake(x, 0, pill.frame.size.width, 32); x += pill.frame.size.width + 8;
     pill.tag = (NSInteger)i;
@@ -112,11 +112,11 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
   }
   self.pills.contentSize = CGSizeMake(x, 32);
   self.pillButtons = pillButtons;
-  self.status = [[UILabel alloc] init]; self.status.font = [PhoenixTheme regular:14]; self.status.textColor = [PhoenixTheme subtext];
+  self.status = [[UILabel alloc] init]; self.status.font = [BennuTheme regular:14]; self.status.textColor = [BennuTheme subtext];
   for (UIView* view in @[self.titleLabel, self.field, self.cancelButton, self.pills, self.status]) [self.header addSubview:view];
   [self.view addSubview:self.header];
   [self stylePills];
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:BennuTrackChanged object:nil];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; [self.request cancel]; [self.debounce invalidate]; }
 - (void)viewDidLayoutSubviews {
@@ -143,8 +143,8 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
 - (void)stylePills {
   for (UIButton* pill in self.pillButtons) {
     BOOL on = pill.tag == self.filter;
-    pill.backgroundColor = on ? [PhoenixTheme green] : [PhoenixTheme card];
-    [pill setTitleColor:on ? [UIColor blackColor] : [PhoenixTheme text] forState:UIControlStateNormal];
+    pill.backgroundColor = on ? [BennuTheme green] : [BennuTheme card];
+    [pill setTitleColor:on ? [UIColor blackColor] : [BennuTheme text] forState:UIControlStateNormal];
   }
 }
 - (void)pillTapped:(UIButton*)pill { self.filter = pill.tag; [self stylePills]; [self.table reloadData]; }
@@ -210,7 +210,7 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
   if (gesture.state != UIGestureRecognizerStateBegan) return;
   NSIndexPath* path = [self.table indexPathForRowAtPoint:[gesture locationInView:self.table]];
   if (!path || path.section != SearchSongs || path.row >= (NSInteger)self.tracks.count) return;
-  PhoenixTrackMenu(self, self.tracks[path.row], [self.table cellForRowAtIndexPath:path]);
+  BennuTrackMenu(self, self.tracks[path.row], [self.table cellForRowAtIndexPath:path]);
 }
 // ---- results table
 - (BOOL)sectionVisible:(NSInteger)section {
@@ -241,10 +241,10 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
   EntityCell* cell = [table dequeueReusableCellWithIdentifier:@"entity" forIndexPath:path];
   if (path.section == SearchArtists) {
     NSDictionary* artist = self.artists[path.row];
-    [cell showTitle:artist[@"name"] subtitle:@"Artist" artwork:artist[@"image"] placeholder:[PhoenixTheme placeholderArt:48] round:YES];
+    [cell showTitle:artist[@"name"] subtitle:@"Artist" artwork:artist[@"image"] placeholder:[BennuTheme placeholderArt:48] round:YES];
   } else {
     NSDictionary* album = self.albums[path.row];
-    [cell showTitle:album[@"name"] subtitle:[NSString stringWithFormat:@"Album • %@", album[@"artist"] ?: @""] artwork:album[@"artwork"] placeholder:[PhoenixTheme placeholderArt:48] round:NO];
+    [cell showTitle:album[@"name"] subtitle:[NSString stringWithFormat:@"Album • %@", album[@"artist"] ?: @""] artwork:album[@"artwork"] placeholder:[BennuTheme placeholderArt:48] round:NO];
   }
   return cell;
 }
@@ -256,9 +256,9 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
     for (NSDictionary* track in self.tracks) if ([track[@"uri"] isKindOfClass:NSString.class]) [uris addObject:track[@"uri"]];
     [[PlayerModel shared] playURIs:uris index:path.row contextUri:@"" contextName:[NSString stringWithFormat:@"Search: %@", self.lastQuery]];
   } else if (path.section == SearchArtists) {
-    NSDictionary* artist = self.artists[path.row]; PhoenixOpen(artist[@"uri"], artist[@"name"], artist[@"image"]);
+    NSDictionary* artist = self.artists[path.row]; BennuOpen(artist[@"uri"], artist[@"name"], artist[@"image"]);
   } else {
-    NSDictionary* album = self.albums[path.row]; PhoenixOpen(album[@"uri"], album[@"name"], album[@"artwork"]);
+    NSDictionary* album = self.albums[path.row]; BennuOpen(album[@"uri"], album[@"name"], album[@"artwork"]);
   }
 }
 // ---- browse grid: recent searches, then categories
@@ -277,7 +277,7 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
 - (UICollectionReusableView*)collectionView:(UICollectionView*)view viewForSupplementaryElementOfKind:(NSString*)kind atIndexPath:(NSIndexPath*)path {
   UICollectionReusableView* header = [view dequeueReusableSupplementaryViewOfKind:kind withReuseIdentifier:@"title" forIndexPath:path];
   UILabel* label = (UILabel*)[header viewWithTag:7];
-  if (!label) { label = [[UILabel alloc] init]; label.tag = 7; label.font = [PhoenixTheme bold:20]; label.textColor = [PhoenixTheme text]; [header addSubview:label]; }
+  if (!label) { label = [[UILabel alloc] init]; label.tag = 7; label.font = [BennuTheme bold:20]; label.textColor = [BennuTheme text]; [header addSubview:label]; }
   label.frame = CGRectMake(16, 10, view.bounds.size.width - 32, 28);
   label.text = path.section == 0 ? @"Recent searches" : @"Browse all";
   return header;
@@ -287,8 +287,8 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
     UICollectionViewCell* cell = [view dequeueReusableCellWithReuseIdentifier:@"recent" forIndexPath:path];
     UILabel* label = (UILabel*)[cell.contentView viewWithTag:8];
     if (!label) {
-      label = [[UILabel alloc] init]; label.tag = 8; label.font = [PhoenixTheme regular:17]; label.textColor = [PhoenixTheme text]; [cell.contentView addSubview:label];
-      UIImageView* icon = [[UIImageView alloc] initWithImage:[PhoenixTheme icon:@"search" size:20 color:[PhoenixTheme subtext]]]; icon.tag = 9; [cell.contentView addSubview:icon];
+      label = [[UILabel alloc] init]; label.tag = 8; label.font = [BennuTheme regular:17]; label.textColor = [BennuTheme text]; [cell.contentView addSubview:label];
+      UIImageView* icon = [[UIImageView alloc] initWithImage:[BennuTheme icon:@"search" size:20 color:[BennuTheme subtext]]]; icon.tag = 9; [cell.contentView addSubview:icon];
     }
     [cell.contentView viewWithTag:9].frame = CGRectMake(0, 12, 20, 20);
     label.frame = CGRectMake(32, 0, cell.contentView.bounds.size.width - 32, 44);

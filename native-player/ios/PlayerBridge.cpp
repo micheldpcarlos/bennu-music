@@ -33,7 +33,7 @@ std::vector<std::string> pendingQueue; int pendingRepeat = -1;
 std::function<void(uint32_t)> setRemoteVolume; long pendingVolume = -1; bool volumeKnown = false;
 std::vector<std::string> queueUris; size_t queueIndex = 0; std::string queueContext;
 std::function<void(bool)> discoverableHandler;
-const char* kHiddenMarker = "/var/mobile/Documents/phoenix-hidden";
+const char* kHiddenMarker = "/var/mobile/Documents/bennu-hidden";
 std::atomic<bool> stopFlag{false};
 struct PendingPlay { std::vector<std::string> uris; size_t index = 0; std::string context; bool valid = false; };
 PendingPlay pendingPlay;
@@ -85,13 +85,13 @@ std::mutex healthMutex;
 std::map<std::string, KindHealth> kindHealth;
 bool kindDisabledByFlags(const std::string& kind) {
   try {
-    std::ifstream file("/var/mobile/Documents/phoenix-catalog-flags.json");
+    std::ifstream file("/var/mobile/Documents/bennu-catalog-flags.json");
     if (!file) return false;
     auto flags = nlohmann::json::parse(file);
     return flags.is_object() && flags.count(kind) && flags[kind].is_boolean() && !flags[kind].get<bool>();
   } catch (...) { return false; }
 }
-const char* kUnavailable = "{\"error\":\"Browsing is unavailable right now. Your phone can still pick Phoenix Player in Spotify.\",\"unavailable\":true,\"loading\":false}";
+const char* kUnavailable = "{\"error\":\"Browsing is unavailable right now. Your phone can still pick Bennu Music in Spotify.\",\"unavailable\":true,\"loading\":false}";
 }
 uint64_t ipad_catalog_request(const char* kind, const char* argument) {
   if (!kind || !*kind) return 0;
@@ -278,7 +278,7 @@ uint64_t ipad_player_queue(char* output, uint32_t capacity) {
   return queueRevision;
 }
 
-static const char* kVolumeFile = "/var/mobile/Documents/phoenix-volume";
+static const char* kVolumeFile = "/var/mobile/Documents/bennu-volume";
 uint32_t ipad_player_saved_volume() {
   { std::lock_guard<std::mutex> lock(bridgeMutex); if (volumeKnown) return state.volume; }
   FILE* f = std::fopen(kVolumeFile, "r");

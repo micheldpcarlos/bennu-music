@@ -1,7 +1,7 @@
-# Phoenix Player
+# Bennu Music
 
 A native Spotify player for the jailbroken iPad 2 (iOS 9.3.5, ARMv7). It is both a
-**Spotify Connect receiver** (pick "Phoenix Player" in the Spotify app on your phone) and a
+**Spotify Connect receiver** (pick "Bennu Music" in the Spotify app on your phone) and a
 **standalone player** with a Spotify-style interface: sign in once by scanning a QR code,
 then browse, search and play on the iPad itself, with the screen off, no phone or computer
 in the loop.
@@ -11,7 +11,7 @@ toolchain that iOS 9 requires, with the browsing layer, authentication flow and 
 written for this project. **A Spotify Premium account is required** (Spotify Connect and
 audio streaming are Premium features).
 
-<p align="center"><img src="native-player/ios/app/icon/AppIcon-152.png" width="76" alt="Phoenix Player icon"></p>
+<p align="center"><img src="native-player/ios/app/icon/AppIcon-152.png" width="76" alt="Bennu Music icon"></p>
 
 ## What it does
 
@@ -103,7 +103,7 @@ pip install -r native-player/ios/requirements-build.txt protobuf grpcio-tools
 scripts/build.sh
 ```
 
-The result is `native-player/ios/build/iPad2MediaPlayer.app`, a bundle with one
+The result is `native-player/ios/build/BennuMusic.app`, a bundle with one
 executable named after its hash, signed with `ldid` and a private Keychain access group.
 
 ## Install
@@ -114,27 +114,27 @@ IPAD=root@<ipad address> scripts/install.sh
 
 The script uploads the bundle next to the installed one, stops the app, swaps the
 directories, refreshes the icon cache and verifies the result. The previous bundle is kept
-as `iPad2MediaPlayer.app.previous` for rollback. Open "Phoenix Player" on the iPad: the
+as `BennuMusic.app.previous` for rollback. Open "Bennu Music" on the iPad: the
 welcome screen explains both sign-in methods.
 
 ## Developer tools
 
-The app registers the `phoenix://` URL scheme so it can be driven over SSH with `uiopen`:
+The app registers the `bennu://` URL scheme so it can be driven over SSH with `uiopen`:
 
 | URL | Effect |
 |---|---|
-| `phoenix://screenshot` | Writes `Documents/phoenix-screen.png` |
-| `phoenix://tab?n=0..2`, `phoenix://back`, `phoenix://scroll?y=800` | Navigation |
-| `phoenix://search?q=...`, `phoenix://open?uri=spotify:album:...`, `phoenix://play?uri=...` | Browsing and playback |
-| `phoenix://nowplaying`, `phoenix://seek?ms=266000`, `phoenix://volume?v=32768`, `phoenix://repeat?mode=1`, `phoenix://enqueue?uri=...` | Player |
-| `phoenix://viz?family=Battery%26preset=brightsphere`, `phoenix://vizmenu` | Visualizer |
-| `phoenix://setup`, `phoenix://signout`, `phoenix://visible?on=0`, `phoenix://drop` | Account, visibility, simulated connection loss |
+| `bennu://screenshot` | Writes `Documents/bennu-screen.png` |
+| `bennu://tab?n=0..2`, `bennu://back`, `bennu://scroll?y=800` | Navigation |
+| `bennu://search?q=...`, `bennu://open?uri=spotify:album:...`, `bennu://play?uri=...` | Browsing and playback |
+| `bennu://nowplaying`, `bennu://seek?ms=266000`, `bennu://volume?v=32768`, `bennu://repeat?mode=1`, `bennu://enqueue?uri=...` | Player |
+| `bennu://viz?family=Battery%26preset=brightsphere`, `bennu://vizmenu` | Visualizer |
+| `bennu://setup`, `bennu://signout`, `bennu://visible?on=0`, `bennu://drop` | Account, visibility, simulated connection loss |
 
 Separate query parameters with `%26` when the URL goes through `ssh`; the iPad's shell
 splits on `&` and `;`. The engine's log is `Documents/cspot-app.log`. Dropping a
-`Documents/phoenix-probe.txt` (one URL per line) makes the engine fetch each URL with the
+`Documents/bennu-probe.txt` (one URL per line) makes the engine fetch each URL with the
 session token at startup, which is how the catalog endpoints were explored.
-`Documents/phoenix-catalog-flags.json` (for example `{"search": false}`) disables a request
+`Documents/bennu-catalog-flags.json` (for example `{"search": false}`) disables a request
 kind without a rebuild.
 
 ## Known limits

@@ -1,6 +1,6 @@
 # Third-party software
 
-Phoenix Player is GPL-3.0-or-later (see `LICENSE`). It bundles the following components,
+Bennu Music is GPL-3.0-or-later (see `LICENSE`). It bundles the following components,
 vendored under `native-player/` with their license files in place. Provenance (upstream
 repositories and pinned commits) is recorded in `native-player/upstream/VENDOR.md`.
 

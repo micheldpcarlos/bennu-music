@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "NowPlayingViewController.h"
-#import "PhoenixTheme.h"
+#import "BennuTheme.h"
 #import "PlayerModel.h"
 #import "ImageCache.h"
 #import "QueueViewController.h"
@@ -30,7 +30,7 @@
 @implementation NowPlayingViewController
 - (UIButton*)iconButton:(NSString*)name size:(CGFloat)size action:(SEL)action {
   UIButton* button = [UIButton buttonWithType:UIButtonTypeCustom];
-  [button setImage:[PhoenixTheme icon:name size:size color:[PhoenixTheme text]] forState:UIControlStateNormal];
+  [button setImage:[BennuTheme icon:name size:size color:[BennuTheme text]] forState:UIControlStateNormal];
   [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:button];
   return button;
@@ -43,36 +43,36 @@
 }
 - (void)viewDidLoad {
   [super viewDidLoad];
-  self.view.backgroundColor = [PhoenixTheme background];
+  self.view.backgroundColor = [BennuTheme background];
   self.closeButton = [self iconButton:@"chevronDown" size:28 action:@selector(close)];
-  self.contextLabel = [self label:[PhoenixTheme regular:11] color:[PhoenixTheme subtext]];
-  self.contextName = [self label:[PhoenixTheme bold:13] color:[PhoenixTheme text]];
+  self.contextLabel = [self label:[BennuTheme regular:11] color:[BennuTheme subtext]];
+  self.contextName = [self label:[BennuTheme bold:13] color:[BennuTheme text]];
   self.artwork = [[UIImageView alloc] init];
   self.artwork.contentMode = UIViewContentModeScaleAspectFill;
   self.artwork.clipsToBounds = YES;
   self.artwork.layer.cornerRadius = 6;
   self.artwork.layer.shadowOpacity = 0.6; self.artwork.layer.shadowRadius = 24; self.artwork.layer.shadowOffset = CGSizeMake(0, 12);
   [self.view addSubview:self.artwork];
-  self.titleLabel = [self label:[PhoenixTheme bold:24] color:[PhoenixTheme text]];
+  self.titleLabel = [self label:[BennuTheme bold:24] color:[BennuTheme text]];
   self.titleLabel.textAlignment = NSTextAlignmentLeft;
-  self.artistLabel = [self label:[PhoenixTheme regular:17] color:[PhoenixTheme subtext]];
+  self.artistLabel = [self label:[BennuTheme regular:17] color:[BennuTheme subtext]];
   self.artistLabel.textAlignment = NSTextAlignmentLeft;
   self.slider = [[UISlider alloc] init];
-  self.slider.minimumTrackTintColor = [PhoenixTheme text];
+  self.slider.minimumTrackTintColor = [BennuTheme text];
   self.slider.maximumTrackTintColor = [UIColor colorWithWhite:1 alpha:0.3];
   [self.slider setThumbImage:[self thumbImage] forState:UIControlStateNormal];
   [self.slider addTarget:self action:@selector(scrubBegan) forControlEvents:UIControlEventTouchDown];
   [self.slider addTarget:self action:@selector(scrubEnded) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
   [self.slider addTarget:self action:@selector(scrubMoved) forControlEvents:UIControlEventValueChanged];
   [self.view addSubview:self.slider];
-  self.elapsed = [self label:[PhoenixTheme regular:12] color:[PhoenixTheme subtext]];
+  self.elapsed = [self label:[BennuTheme regular:12] color:[BennuTheme subtext]];
   self.elapsed.textAlignment = NSTextAlignmentLeft;
-  self.remaining = [self label:[PhoenixTheme regular:12] color:[PhoenixTheme subtext]];
+  self.remaining = [self label:[BennuTheme regular:12] color:[BennuTheme subtext]];
   self.remaining.textAlignment = NSTextAlignmentRight;
   self.shuffleButton = [self iconButton:@"shuffle" size:26 action:@selector(shuffle)];
   self.previousButton = [self iconButton:@"previous" size:36 action:@selector(previous)];
   self.playButton = [UIButton buttonWithType:UIButtonTypeCustom];
-  self.playButton.backgroundColor = [PhoenixTheme text];
+  self.playButton.backgroundColor = [BennuTheme text];
   self.playButton.layer.cornerRadius = 36;
   [self.playButton addTarget:self action:@selector(togglePause) forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:self.playButton];
@@ -83,15 +83,15 @@
   self.vizButton = [self iconButton:@"visualizer" size:26 action:@selector(chooseVisualization)];
   self.vizButton.accessibilityLabel = @"Visualizations";
   self.queueButton.accessibilityLabel = @"Queue";
-  self.status = [self label:[PhoenixTheme regular:13] color:[PhoenixTheme subtext]];
+  self.status = [self label:[BennuTheme regular:13] color:[BennuTheme subtext]];
   self.status.numberOfLines = 2;
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(render) name:PhoenixPlayerChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(render) name:BennuMusicChanged object:nil];
   [self render];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
 - (UIImage*)thumbImage {
   UIGraphicsBeginImageContextWithOptions(CGSizeMake(14, 14), NO, 0);
-  [[PhoenixTheme text] setFill]; [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, 14, 14)] fill];
+  [[BennuTheme text] setFill]; [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, 14, 14)] fill];
   UIImage* image = UIGraphicsGetImageFromCurrentImageContext(); UIGraphicsEndImageContext(); return image;
 }
 - (void)viewDidLayoutSubviews {
@@ -134,21 +134,21 @@
   self.contextName.text = model.contextName ?: @"";
   self.titleLabel.text = hasTrack ? @(snapshot.title) : @"Nothing playing";
   self.artistLabel.text = hasTrack ? @(snapshot.artist) : @"Pick a song from Home or Search";
-  [[ImageCache shared] load:hasTrack ? @(snapshot.artwork) : @"" into:self.artwork placeholder:[PhoenixTheme placeholderArt:300]];
-  [self.playButton setImage:[PhoenixTheme icon:snapshot.paused ? @"play" : @"pause" size:36 color:[UIColor blackColor]] forState:UIControlStateNormal];
+  [[ImageCache shared] load:hasTrack ? @(snapshot.artwork) : @"" into:self.artwork placeholder:[BennuTheme placeholderArt:300]];
+  [self.playButton setImage:[BennuTheme icon:snapshot.paused ? @"play" : @"pause" size:36 color:[UIColor blackColor]] forState:UIControlStateNormal];
   BOOL enabled = hasTrack && !snapshot.loading && !snapshot.pending;
   for (UIButton* button in @[self.playButton, self.previousButton, self.nextButton]) { button.enabled = enabled; button.alpha = enabled ? 1 : 0.4; }
   self.shuffleButton.alpha = model.shuffle ? 1 : 0.35;
-  [self.shuffleButton setImage:[PhoenixTheme icon:@"shuffle" size:26 color:model.shuffle ? [PhoenixTheme green] : [PhoenixTheme text]] forState:UIControlStateNormal];
+  [self.shuffleButton setImage:[BennuTheme icon:@"shuffle" size:26 color:model.shuffle ? [BennuTheme green] : [BennuTheme text]] forState:UIControlStateNormal];
   if (!self.scrubbing) {
     self.slider.maximumValue = MAX(1, snapshot.durationMs);
     self.slider.value = hasTrack ? snapshot.positionMs : 0;
-    self.elapsed.text = PhoenixDuration(hasTrack ? snapshot.positionMs : 0);
-    self.remaining.text = [@"-" stringByAppendingString:PhoenixDuration(hasTrack && snapshot.durationMs > snapshot.positionMs ? snapshot.durationMs - snapshot.positionMs : 0)];
+    self.elapsed.text = BennuDuration(hasTrack ? snapshot.positionMs : 0);
+    self.remaining.text = [@"-" stringByAppendingString:BennuDuration(hasTrack && snapshot.durationMs > snapshot.positionMs ? snapshot.durationMs - snapshot.positionMs : 0)];
   }
   int repeat = snapshot.repeat;
   self.repeatButton.alpha = repeat ? 1 : 0.35;
-  [self.repeatButton setImage:[PhoenixTheme icon:repeat == 2 ? @"repeatOne" : @"repeat" size:26 color:repeat ? [PhoenixTheme green] : [PhoenixTheme text]] forState:UIControlStateNormal];
+  [self.repeatButton setImage:[BennuTheme icon:repeat == 2 ? @"repeatOne" : @"repeat" size:26 color:repeat ? [BennuTheme green] : [BennuTheme text]] forState:UIControlStateNormal];
   if (snapshot.state == IPadFailed) self.status.text = @(snapshot.error);
   else if (snapshot.reconnecting) self.status.text = @"Reconnecting to Spotify…";
   else if (snapshot.state != IPadReady) self.status.text = @"Connecting to Spotify…";
@@ -156,7 +156,7 @@
   else self.status.text = @"";
 }
 - (void)scrubBegan { self.scrubbing = YES; }
-- (void)scrubMoved { self.elapsed.text = PhoenixDuration((uint32_t)self.slider.value); }
+- (void)scrubMoved { self.elapsed.text = BennuDuration((uint32_t)self.slider.value); }
 - (void)scrubEnded { self.scrubbing = NO; [[PlayerModel shared] seekTo:(uint32_t)self.slider.value]; }
 - (void)close { [self dismissViewControllerAnimated:YES completion:nil]; }
 - (void)togglePause { [[PlayerModel shared] togglePause]; }
@@ -166,14 +166,14 @@
 - (void)repeatTapped { [[PlayerModel shared] cycleRepeat]; }
 // Visualization picker: one panel with families and presets side by side.
 - (void)chooseVisualization {
-  NSArray* saved = [NSUserDefaults.standardUserDefaults arrayForKey:@"PhoenixVisualization"];
+  NSArray* saved = [NSUserDefaults.standardUserDefaults arrayForKey:@"BennuVisualization"];
   VisualizerMenu* menu = [[VisualizerMenu alloc] init];
   __weak NowPlayingViewController* weakSelf = self;
   menu.onPick = ^(NSString* family, NSString* preset) { [weakSelf showVisualization:family preset:preset]; };
   [menu showIn:self.view anchor:self.vizButton selectedFamily:saved.count > 1 ? saved[0] : nil preset:saved.count > 1 ? saved[1] : nil];
 }
 - (void)showVisualization:(NSString*)family preset:(NSString*)preset {
-  [NSUserDefaults.standardUserDefaults setObject:@[family, preset] forKey:@"PhoenixVisualization"];
+  [NSUserDefaults.standardUserDefaults setObject:@[family, preset] forKey:@"BennuVisualization"];
   if (!self.visualizer) {
     self.visualizer = [[VisualizerView alloc] initWithFrame:self.view.bounds];
     __weak NowPlayingViewController* weakSelf = self;

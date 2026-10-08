@@ -53,7 +53,7 @@ void run() {
     setState({{"state", "requesting"}});
     int status = 0;
     auto start = postForm("https://accounts.spotify.com/oauth2/device/authorize",
-        "client_id=" + std::string(kClientId) + "&scope=" + encode(kScopes) + "&description=" + encode("Phoenix Player"), status);
+        "client_id=" + std::string(kClientId) + "&scope=" + encode(kScopes) + "&description=" + encode("Bennu Music"), status);
     if (status != 200) { fail("Spotify refused the sign-in request (HTTP " + std::to_string(status) + "). Try again later."); return; }
     const auto deviceCode = str(start, "device_code"), userCode = str(start, "user_code");
     auto url = str(start, "verification_uri_complete");

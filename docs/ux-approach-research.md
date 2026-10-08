@@ -1,4 +1,4 @@
-# Phoenix Player: UX approach research (login, browsing, playback)
+# Bennu Music: UX approach research (login, browsing, playback)
 
 Date: 2026-10-07. Scope: jailbroken iPad 2 (iOS 9.3.5) running a cspot-based Spotify client. Sources are linked inline with dates; items marked *hypothesis* are not verified on device.
 

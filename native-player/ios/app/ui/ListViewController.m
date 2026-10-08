@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "ListViewController.h"
-#import "PhoenixTheme.h"
-#import "PhoenixCells.h"
+#import "BennuTheme.h"
+#import "BennuCells.h"
 #import "CatalogClient.h"
 #import "PlayerModel.h"
 #import "ImageCache.h"
@@ -41,21 +41,21 @@
   self.artwork = [[UIImageView alloc] init];
   self.artwork.contentMode = UIViewContentModeScaleAspectFill; self.artwork.clipsToBounds = YES;
   self.artwork.layer.shadowOpacity = 0.5; self.artwork.layer.shadowRadius = 16; self.artwork.layer.shadowOffset = CGSizeMake(0, 8);
-  self.titleLabel = [[UILabel alloc] init]; self.titleLabel.font = [PhoenixTheme bold:30]; self.titleLabel.textColor = [PhoenixTheme text]; self.titleLabel.numberOfLines = 2;
-  self.subtitleLabel = [[UILabel alloc] init]; self.subtitleLabel.font = [PhoenixTheme bold:15]; self.subtitleLabel.textColor = [PhoenixTheme text];
-  self.detailLabel = [[UILabel alloc] init]; self.detailLabel.font = [PhoenixTheme regular:13]; self.detailLabel.textColor = [PhoenixTheme subtext]; self.detailLabel.numberOfLines = 2;
-  self.playButton = [PhoenixTheme greenPlayButton:56];
+  self.titleLabel = [[UILabel alloc] init]; self.titleLabel.font = [BennuTheme bold:30]; self.titleLabel.textColor = [BennuTheme text]; self.titleLabel.numberOfLines = 2;
+  self.subtitleLabel = [[UILabel alloc] init]; self.subtitleLabel.font = [BennuTheme bold:15]; self.subtitleLabel.textColor = [BennuTheme text];
+  self.detailLabel = [[UILabel alloc] init]; self.detailLabel.font = [BennuTheme regular:13]; self.detailLabel.textColor = [BennuTheme subtext]; self.detailLabel.numberOfLines = 2;
+  self.playButton = [BennuTheme greenPlayButton:56];
   [self.playButton addTarget:self action:@selector(playAll) forControlEvents:UIControlEventTouchUpInside];
   self.shuffleButton = [UIButton buttonWithType:UIButtonTypeCustom];
-  [self.shuffleButton setImage:[PhoenixTheme icon:@"shuffle" size:30 color:[PhoenixTheme subtext]] forState:UIControlStateNormal];
+  [self.shuffleButton setImage:[BennuTheme icon:@"shuffle" size:30 color:[BennuTheme subtext]] forState:UIControlStateNormal];
   [self.shuffleButton addTarget:self action:@selector(shuffleAll) forControlEvents:UIControlEventTouchUpInside];
-  self.status = [[UILabel alloc] init]; self.status.font = [PhoenixTheme regular:13]; self.status.textColor = [PhoenixTheme subtext];
+  self.status = [[UILabel alloc] init]; self.status.font = [BennuTheme regular:13]; self.status.textColor = [BennuTheme subtext];
   for (UIView* view in @[self.artwork, self.titleLabel, self.subtitleLabel, self.detailLabel, self.playButton, self.shuffleButton, self.status]) [self.header addSubview:view];
   self.table.tableHeaderView = self.header;
   self.titleLabel.text = self.name;
-  UIImage* placeholder = [self.kind isEqualToString:@"collection"] ? [PhoenixTheme likedSongsArt:240] : [PhoenixTheme placeholderArt:240];
+  UIImage* placeholder = [self.kind isEqualToString:@"collection"] ? [BennuTheme likedSongsArt:240] : [BennuTheme placeholderArt:240];
   [[ImageCache shared] load:self.artworkURL into:self.artwork placeholder:placeholder];
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:BennuTrackChanged object:nil];
   [self load];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; [self.request cancel]; }
@@ -143,7 +143,7 @@
   NSIndexPath* path = [self.table indexPathForRowAtPoint:[gesture locationInView:self.table]];
   if (!path) return;
   if (path.row >= (NSInteger)self.tracks.count) return;
-  PhoenixTrackMenu(self, self.tracks[path.row], [self.table cellForRowAtIndexPath:path]);
+  BennuTrackMenu(self, self.tracks[path.row], [self.table cellForRowAtIndexPath:path]);
 }
 - (NSInteger)tableView:(UITableView*)table numberOfRowsInSection:(NSInteger)section { return self.tracks.count; }
 - (void)configure:(TrackCell*)cell at:(NSIndexPath*)path {

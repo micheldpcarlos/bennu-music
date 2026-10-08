@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-#import "PhoenixTheme.h"
+#import "BennuTheme.h"
 static UIColor* hex(unsigned value) {
   return [UIColor colorWithRed:((value >> 16) & 0xff) / 255.0 green:((value >> 8) & 0xff) / 255.0 blue:(value & 0xff) / 255.0 alpha:1];
 }
-NSString* PhoenixDuration(uint32_t milliseconds) {
+NSString* BennuDuration(uint32_t milliseconds) {
   unsigned seconds = milliseconds / 1000;
   return [NSString stringWithFormat:@"%u:%02u", seconds / 60, seconds % 60];
 }
-@implementation PhoenixTheme
+@implementation BennuTheme
 + (UIColor*)background { return hex(0x121212); }
 + (UIColor*)surface { return hex(0x181818); }
 + (UIColor*)card { return hex(0x282828); }

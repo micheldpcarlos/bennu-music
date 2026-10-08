@@ -15,7 +15,7 @@ class SpclientClient;
 class Catalog {
  public:
   using Publish = std::function<void(const std::string& json, bool done)>;
-  explicit Catalog(std::shared_ptr<cspot::Context> context, std::string cacheDir = "/var/mobile/Documents/phoenix-cache");
+  explicit Catalog(std::shared_ptr<cspot::Context> context, std::string cacheDir = "/var/mobile/Documents/bennu-cache");
   ~Catalog();
   void search(const std::string& query, const Publish& publish);
   void album(const std::string& id, const Publish& publish);

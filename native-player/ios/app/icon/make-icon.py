@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Build the iOS icon set from phoenix-source.png (user-supplied artwork: white phoenix
+"""Build the iOS icon set from bennu-source.png (user-supplied artwork: white bennu
 and sound waves on a green disc). The disc is cut out with a circular mask and placed on
 a full-bleed background of the same green, so the rounded iOS icon has no dark corners. Run with the build venv
 python (it has Pillow): native-player/build-venv/bin/python app/icon/make-icon.py"""
@@ -11,7 +11,7 @@ HERE = Path(__file__).resolve().parent
 BG = (14, 196, 92)   # the disc green: iOS rounds the corners itself, so the icon is full-bleed green
 
 def main():
-    src = Image.open(HERE / "phoenix-source.png").convert("RGB")
+    src = Image.open(HERE / "bennu-source.png").convert("RGB")
     # bounding box of everything that is not the white margin
     diff = ImageChops.difference(src, Image.new("RGB", src.size, (255, 255, 255))).convert("L").point(lambda v: 255 if v > 24 else 0)
     x0, y0, x1, y1 = diff.getbbox()

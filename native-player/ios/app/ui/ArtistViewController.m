@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "ArtistViewController.h"
-#import "PhoenixTheme.h"
-#import "PhoenixCells.h"
+#import "BennuTheme.h"
+#import "BennuCells.h"
 #import "CatalogClient.h"
 #import "PlayerModel.h"
 #import "ImageCache.h"
@@ -37,17 +37,17 @@ enum { SectionPopular = 0, SectionAlbums, SectionSingles, SectionAbout, SectionC
   [self.table registerClass:SectionHeader.class forHeaderFooterViewReuseIdentifier:@"header"];
   self.header = [[UIView alloc] init];
   self.portrait = [[UIImageView alloc] init]; self.portrait.contentMode = UIViewContentModeScaleAspectFill; self.portrait.clipsToBounds = YES;
-  self.titleLabel = [[UILabel alloc] init]; self.titleLabel.font = [PhoenixTheme bold:40]; self.titleLabel.textColor = [PhoenixTheme text]; self.titleLabel.adjustsFontSizeToFitWidth = YES;
+  self.titleLabel = [[UILabel alloc] init]; self.titleLabel.font = [BennuTheme bold:40]; self.titleLabel.textColor = [BennuTheme text]; self.titleLabel.adjustsFontSizeToFitWidth = YES;
   self.titleLabel.text = self.name;
-  self.status = [[UILabel alloc] init]; self.status.font = [PhoenixTheme regular:13]; self.status.textColor = [PhoenixTheme subtext];
-  self.playButton = [PhoenixTheme greenPlayButton:56];
+  self.status = [[UILabel alloc] init]; self.status.font = [BennuTheme regular:13]; self.status.textColor = [BennuTheme subtext];
+  self.playButton = [BennuTheme greenPlayButton:56];
   [self.playButton addTarget:self action:@selector(playPopular) forControlEvents:UIControlEventTouchUpInside];
   self.shuffleButton = [UIButton buttonWithType:UIButtonTypeCustom];
-  [self.shuffleButton setImage:[PhoenixTheme icon:@"shuffle" size:30 color:[PhoenixTheme subtext]] forState:UIControlStateNormal];
+  [self.shuffleButton setImage:[BennuTheme icon:@"shuffle" size:30 color:[BennuTheme subtext]] forState:UIControlStateNormal];
   [self.shuffleButton addTarget:self action:@selector(shufflePopular) forControlEvents:UIControlEventTouchUpInside];
   for (UIView* view in @[self.portrait, self.titleLabel, self.status, self.playButton, self.shuffleButton]) [self.header addSubview:view];
   self.table.tableHeaderView = self.header;
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:BennuTrackChanged object:nil];
   [self load];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; [self.request cancel]; }
@@ -63,7 +63,7 @@ enum { SectionPopular = 0, SectionAlbums, SectionSingles, SectionAbout, SectionC
     owner.albums = [json[@"albums"] isKindOfClass:NSArray.class] ? json[@"albums"] : @[];
     owner.singles = [json[@"singles"] isKindOfClass:NSArray.class] ? json[@"singles"] : @[];
     NSString* name = json[@"name"]; if ([name isKindOfClass:NSString.class] && name.length) { owner.name = name; owner.titleLabel.text = name; owner.topTitle.text = name; }
-    [[ImageCache shared] load:json[@"image"] into:owner.portrait placeholder:[PhoenixTheme placeholderArt:200]];
+    [[ImageCache shared] load:json[@"image"] into:owner.portrait placeholder:[BennuTheme placeholderArt:200]];
     owner.status.text = done ? @"" : @"Loading…";
     [owner.table reloadData];
   }];
@@ -96,7 +96,7 @@ enum { SectionPopular = 0, SectionAlbums, SectionSingles, SectionAbout, SectionC
   if (!path) return;
   if (path.section != SectionPopular) return;
   if (path.row >= (NSInteger)self.topTracks.count) return;
-  PhoenixTrackMenu(self, self.topTracks[path.row], [self.table cellForRowAtIndexPath:path]);
+  BennuTrackMenu(self, self.topTracks[path.row], [self.table cellForRowAtIndexPath:path]);
 }
 - (NSInteger)tableView:(UITableView*)table numberOfRowsInSection:(NSInteger)section {
   switch (section) {
@@ -139,13 +139,13 @@ enum { SectionPopular = 0, SectionAlbums, SectionSingles, SectionAbout, SectionC
   if (path.section == SectionAbout) {
     UITableViewCell* cell = [table dequeueReusableCellWithIdentifier:@"about" forIndexPath:path];
     cell.backgroundColor = [UIColor clearColor]; cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    cell.textLabel.numberOfLines = 6; cell.textLabel.font = [PhoenixTheme regular:14]; cell.textLabel.textColor = [PhoenixTheme subtext];
+    cell.textLabel.numberOfLines = 6; cell.textLabel.font = [BennuTheme regular:14]; cell.textLabel.textColor = [BennuTheme subtext];
     cell.textLabel.text = self.data[@"biography"];
     return cell;
   }
   ShelfCell* shelf = [table dequeueReusableCellWithIdentifier:@"shelf" forIndexPath:path];
   shelf.items = [self tiles:path.section == SectionAlbums ? self.albums : self.singles];
-  shelf.onSelect = ^(NSDictionary* item) { PhoenixOpen(item[@"uri"], item[@"name"], item[@"artwork"]); };
+  shelf.onSelect = ^(NSDictionary* item) { BennuOpen(item[@"uri"], item[@"name"], item[@"artwork"]); };
   return shelf;
 }
 - (void)tableView:(UITableView*)table didSelectRowAtIndexPath:(NSIndexPath*)path {

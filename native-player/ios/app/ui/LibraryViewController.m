@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "LibraryViewController.h"
-#import "PhoenixTheme.h"
-#import "PhoenixCells.h"
+#import "BennuTheme.h"
+#import "BennuCells.h"
 #import "CatalogClient.h"
 #import "PlayerModel.h"
 @interface LibraryViewController () <UITableViewDataSource, UITableViewDelegate>
@@ -24,12 +24,12 @@
   self.table.rowHeight = 72;
   [self.table registerClass:EntityCell.class forCellReuseIdentifier:@"entity"];
   self.header = [[UIView alloc] init];
-  self.titleLabel = [[UILabel alloc] init]; self.titleLabel.font = [PhoenixTheme bold:30]; self.titleLabel.textColor = [PhoenixTheme text]; self.titleLabel.text = @"Your Library";
-  self.status = [[UILabel alloc] init]; self.status.font = [PhoenixTheme regular:14]; self.status.textColor = [PhoenixTheme subtext];
+  self.titleLabel = [[UILabel alloc] init]; self.titleLabel.font = [BennuTheme bold:30]; self.titleLabel.textColor = [BennuTheme text]; self.titleLabel.text = @"Your Library";
+  self.status = [[UILabel alloc] init]; self.status.font = [BennuTheme regular:14]; self.status.textColor = [BennuTheme subtext];
   [self.header addSubview:self.titleLabel]; [self.header addSubview:self.status];
   self.table.tableHeaderView = self.header;
   [self rebuild];
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:BennuTrackChanged object:nil];
   [self playerChanged];   // the view may be created after the engine is already Ready; the notification only fires on changes
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
@@ -86,12 +86,12 @@
   NSDictionary* item = self.items[path.row];
   BOOL collection = [item[@"type"] isEqualToString:@"collection"];
   [cell showTitle:item[@"name"] subtitle:item[@"subtitle"] artwork:item[@"artwork"]
-      placeholder:collection ? [PhoenixTheme likedSongsArt:60] : [PhoenixTheme placeholderArt:60] round:[item[@"type"] isEqualToString:@"artist"]];
+      placeholder:collection ? [BennuTheme likedSongsArt:60] : [BennuTheme placeholderArt:60] round:[item[@"type"] isEqualToString:@"artist"]];
   return cell;
 }
 - (void)tableView:(UITableView*)table didSelectRowAtIndexPath:(NSIndexPath*)path {
   [table deselectRowAtIndexPath:path animated:YES];
   NSDictionary* item = self.items[path.row];
-  PhoenixOpen(item[@"uri"], item[@"name"], item[@"artwork"]);
+  BennuOpen(item[@"uri"], item[@"name"], item[@"artwork"]);
 }
 @end

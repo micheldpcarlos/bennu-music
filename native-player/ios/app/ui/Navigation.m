@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "Navigation.h"
-#import "PhoenixTheme.h"
+#import "BennuTheme.h"
 #import "MainTabController.h"
 #import "ListViewController.h"
 #import "ArtistViewController.h"
 #import "PlayerModel.h"
-void PhoenixOpen(NSString* uri, NSString* name, NSString* artwork) {
+void BennuOpen(NSString* uri, NSString* name, NSString* artwork) {
   if (![uri isKindOfClass:NSString.class]) return;
   UIViewController* screen = nil;
   if ([uri hasPrefix:@"spotify:album:"]) screen = [[ListViewController alloc] initWithKind:@"album" uri:uri name:name artwork:artwork];
@@ -14,7 +14,7 @@ void PhoenixOpen(NSString* uri, NSString* name, NSString* artwork) {
   else if ([uri hasPrefix:@"spotify:artist:"]) screen = [[ArtistViewController alloc] initWithURI:uri name:name];
   if (screen) [[MainTabController shared] push:screen];
 }
-void PhoenixTrackMenu(UIViewController* from, NSDictionary* track, UIView* anchor) {
+void BennuTrackMenu(UIViewController* from, NSDictionary* track, UIView* anchor) {
   if (![track isKindOfClass:NSDictionary.class]) return;
   NSString* title = [track[@"title"] isKindOfClass:NSString.class] ? track[@"title"] : @"Track";
   UIAlertController* sheet = [UIAlertController alertControllerWithTitle:title message:track[@"artist"] preferredStyle:UIAlertControllerStyleActionSheet];
@@ -26,36 +26,36 @@ void PhoenixTrackMenu(UIViewController* from, NSDictionary* track, UIView* ancho
     }
   }]];
   if ([track[@"albumUri"] isKindOfClass:NSString.class])
-    [sheet addAction:[UIAlertAction actionWithTitle:@"Go to album" style:UIAlertActionStyleDefault handler:^(UIAlertAction* action) { PhoenixOpen(track[@"albumUri"], track[@"album"], track[@"artwork"]); }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Go to album" style:UIAlertActionStyleDefault handler:^(UIAlertAction* action) { BennuOpen(track[@"albumUri"], track[@"album"], track[@"artwork"]); }]];
   NSArray* artists = track[@"artists"];
   if ([artists isKindOfClass:NSArray.class])
     for (NSDictionary* artist in artists)
       if ([artist[@"uri"] isKindOfClass:NSString.class])
-        [sheet addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"Go to %@", artist[@"name"]] style:UIAlertActionStyleDefault handler:^(UIAlertAction* action) { PhoenixOpen(artist[@"uri"], artist[@"name"], nil); }]];
+        [sheet addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"Go to %@", artist[@"name"]] style:UIAlertActionStyleDefault handler:^(UIAlertAction* action) { BennuOpen(artist[@"uri"], artist[@"name"], nil); }]];
   [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
   sheet.popoverPresentationController.sourceView = anchor;
   sheet.popoverPresentationController.sourceRect = anchor.bounds;
   [from presentViewController:sheet animated:YES completion:nil];
 }
-@implementation PhoenixViewController
+@implementation BennuViewController
 - (void)viewDidLoad {
   [super viewDidLoad];
-  self.view.backgroundColor = [PhoenixTheme background];
+  self.view.backgroundColor = [BennuTheme background];
   self.topBar = [[UIView alloc] init];
-  self.topBar.backgroundColor = [PhoenixTheme background];
+  self.topBar.backgroundColor = [BennuTheme background];
   [self.view addSubview:self.topBar];
   self.topTitle = [[UILabel alloc] init];
-  self.topTitle.font = [PhoenixTheme bold:17]; self.topTitle.textColor = [PhoenixTheme text]; self.topTitle.textAlignment = NSTextAlignmentCenter;
+  self.topTitle.font = [BennuTheme bold:17]; self.topTitle.textColor = [BennuTheme text]; self.topTitle.textAlignment = NSTextAlignmentCenter;
   [self.topBar addSubview:self.topTitle];
   self.backButton = [UIButton buttonWithType:UIButtonTypeCustom];
-  [self.backButton setImage:[PhoenixTheme icon:@"chevronLeft" size:28 color:[PhoenixTheme text]] forState:UIControlStateNormal];
+  [self.backButton setImage:[BennuTheme icon:@"chevronLeft" size:28 color:[BennuTheme text]] forState:UIControlStateNormal];
   [self.backButton addTarget:self action:@selector(goBack) forControlEvents:UIControlEventTouchUpInside];
   [self.topBar addSubview:self.backButton];
   self.backButton.hidden = self.isRoot;
 }
 - (void)setupTable {
   self.table = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
-  self.table.backgroundColor = [PhoenixTheme background];
+  self.table.backgroundColor = [BennuTheme background];
   self.table.separatorStyle = UITableViewCellSeparatorStyleNone;
   self.table.indicatorStyle = UIScrollViewIndicatorStyleWhite;
   self.table.tableFooterView = [[UIView alloc] initWithFrame:CGRectZero];

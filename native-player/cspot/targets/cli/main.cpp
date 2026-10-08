@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
 
     // Name shown in the Spotify app's device list (mDNS, zeroconf and Spirc all use it).
     // The device id is derived from this name, so renaming registers a new Connect device.
-    static const char* const kDeviceName = "Phoenix Player";
+    static const char* const kDeviceName = "Bennu Music";
     auto loginBlob = std::make_shared<cspot::LoginBlob>(kDeviceName);
 
 #ifdef CSPOT_IOS_APP
