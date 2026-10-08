@@ -13,6 +13,8 @@ int ipad_device_auth_start(void);
 //        "message":"...","expires_in":n}
 uint32_t ipad_device_auth_status(char* output, uint32_t capacity);
 void ipad_device_auth_cancel(void);
+// Re-run only the credential exchange with the last approved token (kept in memory). 0 if none.
+int ipad_device_auth_retry(void);
 #ifdef __cplusplus
 }
 #endif

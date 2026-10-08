@@ -14,6 +14,7 @@
 @property(nonatomic, strong) UILabel* qrHint;
 @property(nonatomic, strong) UILabel* qrStatus;
 @property(nonatomic, strong) UIButton* codeButton;
+@property(nonatomic, strong) UIButton* retryButton;
 @property(nonatomic, strong) UIView* connectCard;
 @property(nonatomic, strong) UILabel* connectTitle;
 @property(nonatomic, strong) UILabel* connectHint;
@@ -55,6 +56,10 @@
   self.codeButton = [PhoenixTheme pillButton:@"Get a new code"];
   [self.codeButton addTarget:self action:@selector(newCode) forControlEvents:UIControlEventTouchUpInside];
   [self.qrCard addSubview:self.codeButton];
+  self.retryButton = [PhoenixTheme pillButton:@"Retry login"];
+  [self.retryButton addTarget:self action:@selector(retryLogin) forControlEvents:UIControlEventTouchUpInside];
+  self.retryButton.hidden = YES;
+  [self.qrCard addSubview:self.retryButton];
   self.connectCard = [self card];
   self.connectTitle = [self label:[PhoenixTheme bold:20] color:[PhoenixTheme text] in:self.connectCard];
   self.connectTitle.text = @"Or pair with Spotify Connect";
@@ -90,6 +95,7 @@
   self.qrHint.frame = CGRectMake(24, 60 + qr + 58, inner, 120);
   self.qrStatus.frame = CGRectMake(24, 60 + qr + 186, inner, 40);
   self.codeButton.frame = CGRectMake(24, 60 + qr + 236, 170, 32);
+  self.retryButton.frame = CGRectMake(206, 60 + qr + 236, 140, 32);
   self.connectTitle.frame = CGRectMake(24, 20, inner, 26);
   self.connectHint.frame = CGRectMake(24, 56, inner, 110);
   self.connectButton.frame = CGRectMake(24, 180, 250, 32);
@@ -139,11 +145,14 @@
     [NSNotificationCenter.defaultCenter postNotificationName:@"IPadAccountPaired" object:nil];
   } else if ([phase isEqualToString:@"failed"]) {
     self.qrStatus.text = state[@"message"] ?: @"Sign-in failed.";
+    self.retryButton.hidden = ![state[@"retryable"] boolValue];
   } else {
     self.qrStatus.text = @"";
   }
   if (![phase isEqualToString:@"done"]) self.qrStatus.textColor = [PhoenixTheme text];
+  if (![phase isEqualToString:@"failed"]) self.retryButton.hidden = YES;
 }
+- (void)retryLogin { if (!ipad_device_auth_retry()) self.qrStatus.text = @"Nothing to retry. Get a new code."; }
 - (void)enablePairing {
   NSString* marker = @"/var/mobile/Documents/cspot-use-connect-pairing";
   BOOL ok = [@"" writeToFile:marker atomically:YES encoding:NSUTF8StringEncoding error:nil];

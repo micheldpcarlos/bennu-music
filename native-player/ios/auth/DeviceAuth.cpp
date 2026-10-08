@@ -19,6 +19,7 @@ std::mutex stateMutex;
 std::string stateJSON = "{\"state\":\"idle\"}";
 uint32_t stateRevision = 1;
 std::atomic<bool> running{false}, cancelled{false};
+std::string lastToken;  // kept only in memory, cleared on success
 std::string encode(const std::string& input) {
   const char* digits = "0123456789ABCDEF"; std::string output;
   for (unsigned char c : input) {
@@ -46,6 +47,7 @@ JSON postForm(const std::string& url, const std::string& body, int& status) {
   try { return JSON::parse(bytes.begin(), bytes.end()); } catch (...) { return JSON::object(); }
 }
 void fail(const std::string& message) { setState({{"state", "failed"}, {"message", message}}); running = false; }
+void exchange();
 void run() {
   try {
     setState({{"state", "requesting"}});
@@ -79,20 +81,37 @@ void run() {
       return;
     }
     if (cancelled) { setState({{"state", "idle"}}); running = false; return; }
-    setState({{"state", "verifying"}, {"code", userCode}});
-    char credentials[4096] = {};
-    int passed = ipad_oauth_reusable_credentials(token.c_str(), credentials, sizeof(credentials));
+    { std::lock_guard<std::mutex> lock(stateMutex); lastToken = token; }
     std::fill(token.begin(), token.end(), '\0');
-    if (!passed) { std::memset(credentials, 0, sizeof(credentials)); fail("Spotify accepted the sign-in but the player login failed. Try Spotify Connect pairing instead."); return; }
-    int saved = ipad_auth_save(credentials);
-    std::memset(credentials, 0, sizeof(credentials));
-    if (!saved) { fail("Keychain save failed."); return; }
-    setState({{"state", "done"}});
+    exchange();
   } catch (...) {
     fail("Network error during sign-in. Check Wi-Fi and try again.");
   }
   running = false;
 }
+// Turn the approved token into reusable AP credentials and store them.
+void exchange() {
+  std::string token;
+  { std::lock_guard<std::mutex> lock(stateMutex); token = lastToken; }
+  if (token.empty()) { fail("No approved sign-in to retry. Get a new code."); return; }
+  setState({{"state", "verifying"}, {"retryable", true}});
+  char credentials[4096] = {};
+  int passed = ipad_oauth_reusable_credentials(token.c_str(), credentials, sizeof(credentials));
+  if (!passed) { std::memset(credentials, 0, sizeof(credentials)); setState({{"state", "failed"}, {"retryable", true}, {"message", "Spotify approved the sign-in but the player login failed. Tap Retry login, or use Spotify Connect pairing."}}); running = false; return; }
+  int saved = ipad_auth_save(credentials);
+  std::memset(credentials, 0, sizeof(credentials));
+  if (!saved) { fail("Keychain save failed."); return; }
+  { std::lock_guard<std::mutex> lock(stateMutex); std::fill(lastToken.begin(), lastToken.end(), '\0'); lastToken.clear(); }
+  setState({{"state", "done"}});
+  running = false;
+}
+}
+int ipad_device_auth_retry(void) {
+  { std::lock_guard<std::mutex> lock(stateMutex); if (lastToken.empty()) return 0; }
+  bool expected = false;
+  if (!running.compare_exchange_strong(expected, true)) return 0;
+  std::thread([]() { try { exchange(); } catch (...) { fail("Network error during sign-in."); } }).detach();
+  return 1;
 }
 int ipad_device_auth_start(void) {
   bool expected = false;

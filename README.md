@@ -502,7 +502,7 @@ The app is now a Spotify-style player with its own browsing UI. Everything below
 - **Artist page**: portrait, Popular tracks, Albums and Singles shelves, biography.
 - **Now Playing**: full-screen art, scrubber with seek, shuffle, previous/play/next; mini player docked above the tabs on every screen.
 - **Lock screen and Control Center** show the track and respond to play/pause/next/previous (not yet tested on device).
-- **Setup screen** (account icon on Home): sign in by scanning a QR with the phone (Spotify's device-authorization flow with the desktop client id, no Mac relay), or enable Spotify Connect pairing for the next launch. The QR code is shown and polled correctly on device; the approval step needs a phone and is untested.
+- **Setup screen** (account icon on Home): sign in by scanning a QR with the phone (Spotify's device-authorization flow with the desktop client id, no Mac relay), or enable Spotify Connect pairing for the next launch. Verified end to end on 2026-10-08: phone approval, token exchange, Keychain save, and after a restart login5 accepted the new credentials and an album played. One transient AP connection failure was seen; the screen offers Retry login, which reuses the approved token without a new scan.
 
 ### How it works
 

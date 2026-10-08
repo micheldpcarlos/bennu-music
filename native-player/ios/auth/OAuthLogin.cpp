@@ -62,8 +62,9 @@ int ipad_oauth_reusable_credentials(const char* input, char* output, size_t capa
  try {
   std::string token(input);
   if(token.empty() || token.size()>16384) return 0;
-  std::fprintf(stderr,"QR AUTH: trying OAuth AP login\n");
+  std::fprintf(stderr,"QR AUTH: trying OAuth AP login (token length %lu)\n",static_cast<unsigned long>(token.size()));
   ProbeSession first; first.connectWithRandomAp();
+  std::fprintf(stderr,"QR AUTH: AP connected; sending token login\n");
   auto welcome=first.login("",AuthenticationType_AUTHENTICATION_SPOTIFY_TOKEN,Bytes(token.begin(),token.end()));
   first.close();
   std::fill(token.begin(),token.end(),'\0');
@@ -83,5 +84,6 @@ int ipad_oauth_reusable_credentials(const char* input, char* output, size_t capa
   auto text=record.dump();if(text.size()>=capacity)return 0;
   std::memcpy(output,text.c_str(),text.size()+1);
   std::fprintf(stderr,"QR AUTH: reusable account verified\n");return 1;
- } catch(...) {std::fprintf(stderr,"QR AUTH: AP login or network failure\n");return 0;}
+ } catch(const std::exception& error) {std::fprintf(stderr,"QR AUTH: AP login failed: %s\n",error.what());return 0;}
+ catch(...) {std::fprintf(stderr,"QR AUTH: AP login or network failure\n");return 0;}
 }
