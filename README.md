@@ -518,9 +518,19 @@ The app is now a Spotify-style player with its own browsing UI. Everything below
 - Dropping `Documents/phoenix-probe.txt` (one URL per line, optional `| Header: value`) makes the engine fetch each URL with the session token at startup and save the bodies as `phoenix-probe-N.out`.
 - The iPad shell lacks `tail`, `awk`, `wc` and `ps aux`; fetch logs with `cat` and filter on the Mac.
 
+### Added 2026-10-08
+
+- **Reconnect**: the session reconnects by itself on network loss (cspot's MercurySession); startup retries the access point with backoff for about two minutes; the app restarts the engine with growing delays after any failure while an account exists; Home and Now Playing show "Reconnecting…".
+- **Queue and repeat**: queue screen from Now Playing, long-press a track row for Play next / Go to album / Go to artist, repeat off/all/one (implemented in `TrackQueue` so the preloaded next track is correct).
+- **Home**: "Made for you" artist radios and "New releases for you", derived from recently played artists.
+- **Batched metadata**: `extended-metadata/v0/extended-metadata` (protobuf, kind TRACK_V4 = 10, response `extended_metadata=2 → extension_data=3 → {entity_uri=2, Any=3}`), 50 tracks per request. Liked Songs (439) loads in about 2.5 s with a cold cache.
+- **Kill switches**: `Documents/phoenix-catalog-flags.json` (`{"search": false}`) disables a request kind; three consecutive failures pause a kind for five minutes; screens show "Browsing is unavailable right now. Your phone can still pick Phoenix Player."
+- **Search**: browse grid of genre tiles, recent searches, filter pills (All/Songs/Artists/Albums), Cancel returns to browse.
+- Dev actions: `phoenix://repeat?mode=1`, `phoenix://enqueue?uri=...`, `phoenix://drop` (simulates connection loss), `phoenix://visible?on=0`, `phoenix://signout`.
+
 ### Known gaps
 
-- No repeat mode (engine support missing), no queue view, no "add to playlist" or like/unlike (those need write endpoints).
+- No "add to playlist" or like/unlike yet (those need write endpoints).
 - Your full playlist list comes from the `rootlist` endpoint, which only answers JSON when exactly one `Accept` header is sent (bell's HTTP client adds its own `*/*`, hence the earlier 500s). Radio playlists carry no cover and show a placeholder.
 - Search for artists and albums is derived from the matching tracks, so obscure artists with no matching tracks will not appear. The `searchview` endpoint that would return them directly answers HTTP 400 now.
 - Landscape layouts are implemented but were only checked in portrait.
