@@ -99,7 +99,6 @@
   CGFloat width = self.view.bounds.size.width, height = self.view.bounds.size.height;
   BOOL landscape = width > height;
   self.closeButton.frame = CGRectMake(16, 24, 44, 44);
-  self.vizButton.frame = CGRectMake(width - 60, 24, 44, 44);
   self.visualizer.frame = self.view.bounds;
   self.contextLabel.frame = CGRectMake(80, 28, width - 160, 16);
   self.contextName.frame = CGRectMake(80, 46, width - 160, 20);
@@ -121,8 +120,11 @@
   self.nextButton.frame = CGRectMake(center + 36 + 24, controlsY + 8, 56, 56);
   self.shuffleButton.frame = CGRectMake(x, controlsY + 12, 48, 48);
   self.repeatButton.frame = CGRectMake(x + contentWidth - 48, controlsY + 12, 48, 48);
-  self.status.frame = CGRectMake(x, controlsY + 96, contentWidth - 60, 40);
-  self.queueButton.frame = CGRectMake(x + contentWidth - 48, controlsY + 92, 48, 48);
+  // Bottom action row, like Spotify's: visualizer on the left, queue on the right, status in between.
+  CGFloat rowY = controlsY + 92;
+  self.vizButton.frame = CGRectMake(x, rowY, 48, 48);
+  self.queueButton.frame = CGRectMake(x + contentWidth - 48, rowY, 48, 48);
+  self.status.frame = CGRectMake(x + 56, rowY + 4, contentWidth - 112, 40);
 }
 - (void)render {
   PlayerModel* model = [PlayerModel shared];
