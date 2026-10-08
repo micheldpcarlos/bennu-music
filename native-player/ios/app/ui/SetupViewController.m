@@ -184,5 +184,15 @@
   if (![phase isEqualToString:@"failed"]) self.retryButton.hidden = YES;
 }
 - (void)retryLogin { if (!ipad_device_auth_retry()) self.qrStatus.text = @"Nothing to retry. Get a new code."; }
+- (void)signOut {
+  UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"Sign out of Spotify?" message:@"The saved account is removed from this iPad." preferredStyle:UIAlertControllerStyleAlert];
+  [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+  [alert addAction:[UIAlertAction actionWithTitle:@"Sign out" style:UIAlertActionStyleDestructive handler:^(UIAlertAction* action) {
+    if (!ipad_auth_clear()) { self.accountLabel.text = @"Could not remove the saved account."; return; }
+    [[PlayerModel shared] signOut];
+    [self dismissViewControllerAnimated:YES completion:nil];
+  }]];
+  [self presentViewController:alert animated:YES completion:nil];
+}
 - (void)close { ipad_device_auth_cancel(); [self dismissViewControllerAnimated:YES completion:nil]; }
 @end

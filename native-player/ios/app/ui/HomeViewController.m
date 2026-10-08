@@ -58,7 +58,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   PlayerModel* model = [PlayerModel shared];
   IPadPlayerSnapshot snapshot = model.snapshot;
   if (snapshot.state == IPadReady && !self.loadedOnce) { self.loadedOnce = YES; [self load]; }
-  if (snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; [self.accountButton setImage:[PhoenixTheme icon:@"account" size:30 color:[PhoenixTheme text]] forState:UIControlStateNormal]; self.accountButton.layer.cornerRadius = 0; self.recent = nil; self.playlists = nil; [self renderGreeting]; [self.table reloadData]; }
+  if (snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; [self.accountButton setImage:[PhoenixTheme icon:@"account" size:30 color:[PhoenixTheme text]] forState:UIControlStateNormal]; self.recent = nil; self.playlists = nil; [self renderGreeting]; [self.table reloadData]; }
   if (snapshot.state == IPadFailed) self.status.text = [NSString stringWithFormat:@"%s Close and reopen the app to reconnect.", snapshot.error];
   else if (snapshot.state == IPadConnecting) self.status.text = @"Connecting to Spotify…";
   else if (snapshot.state == IPadWaiting) self.status.text = @"No account yet. Tap the account icon to connect Spotify.";
@@ -103,11 +103,18 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   }];
 }
 - (void)showAvatar:(NSString*)url {
+  fprintf(stderr, "IMG: avatar host=%s\n", [NSURL URLWithString:url].host.UTF8String ?: "(invalid url)");
   __weak HomeViewController* weakSelf = self;
   [[ImageCache shared] load:url completion:^(UIImage* image) {
     HomeViewController* owner = weakSelf; if (!owner || !image) return;
-    [owner.accountButton setImage:[image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal] forState:UIControlStateNormal];
-    owner.accountButton.layer.cornerRadius = 18;
+    CGSize size = CGSizeMake(36, 36);
+    UIGraphicsBeginImageContextWithOptions(size, NO, 0);
+    [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, 36, 36)] addClip];
+    CGFloat scale = MAX(36 / image.size.width, 36 / image.size.height);
+    CGSize drawn = CGSizeMake(image.size.width * scale, image.size.height * scale);
+    [image drawInRect:CGRectMake((36 - drawn.width) / 2, (36 - drawn.height) / 2, drawn.width, drawn.height)];
+    UIImage* round = UIGraphicsGetImageFromCurrentImageContext(); UIGraphicsEndImageContext();
+    [owner.accountButton setImage:[round imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal] forState:UIControlStateNormal];
   }];
 }
 - (void)openAccount {
