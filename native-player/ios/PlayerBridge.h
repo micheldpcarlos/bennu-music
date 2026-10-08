@@ -35,6 +35,9 @@ uint64_t ipad_player_queue(char* output, uint32_t capacity);
 void ipad_engine_stop(void);
 int ipad_engine_stop_requested(void);
 void ipad_engine_stop_clear(void);
+// Network visibility: whether the iPad advertises itself for Spotify Connect pairing on the LAN.
+int ipad_engine_discoverable(void);
+void ipad_engine_set_discoverable(int on);
 
 // --- Engine -> bridge notifications ---
 void ipad_player_waiting(void);
@@ -61,6 +64,7 @@ void setPlaybackHandlers(std::function<bool(const std::vector<std::string>&, siz
 using CatalogPublish = std::function<void(const std::string&, bool)>;
 void setCatalogService(std::function<void(const std::string&, const std::string&, const CatalogPublish&)> service);
 void setStopHandler(std::function<void()> handler);
+void setDiscoverableHandler(std::function<void(bool)> handler);
 bool stopRequested();
 void dispatchPending();
 void clearControlHandler();

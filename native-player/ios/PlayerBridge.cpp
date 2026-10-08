@@ -11,6 +11,8 @@
 #include <mutex>
 #include <atomic>
 #include <random>
+#include <sys/stat.h>
+#include <fstream>
 #include <string>
 #include <thread>
 #include <utility>
@@ -24,6 +26,8 @@ std::function<bool(const std::vector<std::string>&, size_t, const std::string&)>
 std::function<void(uint32_t)> seekTrack;
 std::function<void(const std::string&, const std::string&, const ipad_player::CatalogPublish&)> catalogService;
 std::function<void()> stopHandler;
+std::function<void(bool)> discoverableHandler;
+const char* kHiddenMarker = "/var/mobile/Documents/phoenix-hidden";
 std::atomic<bool> stopFlag{false};
 struct PendingPlay { std::vector<std::string> uris; size_t index = 0; std::string context; bool valid = false; };
 PendingPlay pendingPlay;
@@ -125,6 +129,13 @@ void ipad_engine_stop(void) {
   if (handler) { try { handler(); } catch (...) {} }
 }
 int ipad_engine_stop_requested(void) { return stopFlag ? 1 : 0; }
+int ipad_engine_discoverable(void) { struct stat info; return stat(kHiddenMarker, &info) == 0 ? 0 : 1; }
+void ipad_engine_set_discoverable(int on) {
+  if (on) std::remove(kHiddenMarker); else { std::ofstream marker(kHiddenMarker); marker << "hidden"; }
+  std::function<void(bool)> handler;
+  { std::lock_guard<std::mutex> lock(bridgeMutex); handler = discoverableHandler; }
+  if (handler) { try { handler(on != 0); } catch (...) { std::fprintf(stderr, "APP: visibility change failed\n"); } }
+}
 void ipad_engine_stop_clear(void) { stopFlag = false; }
 void ipad_player_snapshot(IPadPlayerSnapshot* output) {
   if (!output) return;
@@ -250,6 +261,10 @@ void setCatalogService(std::function<void(const std::string&, const std::string&
 void clearControlHandler() {
   std::lock_guard<std::mutex> lock(bridgeMutex);
   resetHandlersLocked(); catalogService = nullptr; stopHandler = nullptr;
+}
+void setDiscoverableHandler(std::function<void(bool)> handler) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  discoverableHandler = std::move(handler);
 }
 void setStopHandler(std::function<void()> handler) {
   std::lock_guard<std::mutex> lock(bridgeMutex);

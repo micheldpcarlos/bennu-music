@@ -43,7 +43,7 @@ long long num(const JSON& object, const char* key) {
 std::string imageURL(const std::string& id) {
   if (id.empty()) return {};
   if (id.compare(0, 8, "https://") == 0) {
-    if (id.size() >= 512) return {};
+    if (id.size() >= 2048) return {};  // profile photos on fbcdn carry long signed query strings
     // Legacy hosts (u.scdn.co no longer resolves) and image-cdn-ak.spotifycdn.com (serves formats
     // iOS 9 cannot decode) carry the same 40-hex image id; i.scdn.co serves it as JPEG.
     auto slash = id.rfind('/');
@@ -504,6 +504,6 @@ void Catalog::profile(const Publish& publish) {
       if (uri.compare(0, 17, "spotify:playlist:") != 0) continue;
       playlists.push_back({{"uri", uri}, {"name", str(entry, "name", 256)}, {"artwork", imageURL(str(entry, "image_url", 512))}, {"owner", str(entry, "owner_name", 128)}});
     }
-  publish(JSON{{"name", str(document, "name", 128)}, {"image", imageURL(str(document, "image_url", 512))}, {"playlists", playlists}, {"loading", false}}.dump(), true);
+  publish(JSON{{"name", str(document, "name", 128)}, {"image", imageURL(str(document, "image_url", 2048))}, {"playlists", playlists}, {"loading", false}}.dump(), true);
 }
 }

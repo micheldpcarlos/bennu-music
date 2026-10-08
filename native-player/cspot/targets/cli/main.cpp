@@ -52,14 +52,21 @@
 class ZeroconfAuthenticator {
  public:
   ZeroconfAuthenticator(){};
-  ~ZeroconfAuthenticator(){};
+  ~ZeroconfAuthenticator(){ stop(); };
 
   // Authenticator state
   int serverPort = 7864;
 
   // Use bell's HTTP server to handle the authentication, although anything can be used
   std::unique_ptr<bell::BellHTTPServer> server;
+  std::unique_ptr<bell::MDNSService> mdns;
   std::shared_ptr<cspot::LoginBlob> blob;
+  bool active() { return server != nullptr; }
+  // Stop advertising on the network and close the pairing endpoint.
+  void stop() {
+    if (mdns) { mdns->unregisterService(); mdns.reset(); }
+    server.reset();
+  }
 
   std::mutex pairingMutex;
   bool pairingComplete = false;
@@ -67,6 +74,8 @@ class ZeroconfAuthenticator {
   std::function<void()> onClose;
 
   void registerHandlers() {
+    if (server) return;
+    pairingComplete = false;
     this->server = std::make_unique<bell::BellHTTPServer>(serverPort);
 
     server->registerGet("/spotify_info", [this](struct mg_connection* conn) {
@@ -117,7 +126,7 @@ class ZeroconfAuthenticator {
     });
 
     // Register mdns service, for spotify to find us
-    MDNSService::registerService(
+    mdns = MDNSService::registerService(
         blob->getDeviceName(), "_spotify-connect", "_tcp", "", serverPort,
         {{"VERSION", "1.0"}, {"CPath", "/spotify_info"}, {"Stack", "SP"}});
     std::cout << "Waiting for spotify app to connect..." << std::endl;
@@ -208,7 +217,12 @@ int main(int argc, char** argv) {
           loginBlob->loadJson(server->blob->toJson());
           pairedFromPhone = true;
         };
-        zeroconfServer->registerHandlers();
+        auto* zeroconf = zeroconfServer.get();
+        ipad_player::setDiscoverableHandler([zeroconf](bool on) {
+          if (on && !zeroconf->active()) { zeroconf->registerHandlers(); std::fprintf(stderr, "APP: visible on the network\n"); }
+          else if (!on && zeroconf->active()) { zeroconf->stop(); std::fprintf(stderr, "APP: hidden from the network\n"); }
+        });
+        if (ipad_engine_discoverable()) zeroconfServer->registerHandlers();
         for (;;) {
           if (pairedFromPhone) { std::fprintf(stderr, "AUTH: paired from the phone\n"); break; }
           if (ipad_player::stopRequested()) break;
@@ -223,6 +237,8 @@ int main(int argc, char** argv) {
           std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
         if (ipad_player::stopRequested()) return 0;
+        ipad_player::setDiscoverableHandler(nullptr);
+        zeroconfServer->stop();
         loggedInSemaphore->give();
       }
     }
@@ -349,6 +365,20 @@ int main(int argc, char** argv) {
         // Only shut the socket down here; the engine thread notices, leaves its loop and tears down.
         if (auto context = weakContext.lock()) { try { context->session->interrupt(); } catch (...) {} }
       });
+      {
+        auto* zeroconf = zeroconfServer.get();
+        zeroconf->blob = std::make_shared<cspot::LoginBlob>(kDeviceName);
+        zeroconf->onAuthSuccess = [zeroconf]() {
+          // Another phone picked this iPad: keep that account and restart the engine with it.
+          std::fprintf(stderr, "AUTH: pairing from the phone while signed in; switching account\n");
+          if (ipad_auth_save(zeroconf->blob->toJson().c_str())) ipad_engine_stop();
+        };
+        ipad_player::setDiscoverableHandler([zeroconf](bool on) {
+          if (on && !zeroconf->active()) { zeroconf->registerHandlers(); std::fprintf(stderr, "APP: visible on the network\n"); }
+          else if (!on && zeroconf->active()) { zeroconf->stop(); std::fprintf(stderr, "APP: hidden from the network\n"); }
+        });
+        if (ipad_engine_discoverable()) zeroconf->registerHandlers();
+      }
       ipad_player_ready();
       ipad_player::runCatalogProbeIfRequested(ctx);
 #endif
@@ -367,6 +397,8 @@ int main(int argc, char** argv) {
 
 #ifdef CSPOT_IOS_APP
       ipad_player::clearControlHandler();
+      ipad_player::setDiscoverableHandler(nullptr);
+      zeroconfServer->stop();
       std::fprintf(stderr, "APP: engine loop ended; disconnecting\n");
 #endif
       handler->disconnect();

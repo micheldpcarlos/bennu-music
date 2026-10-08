@@ -23,6 +23,10 @@
 @property(nonatomic, strong) UIButton* connectButton;
 @property(nonatomic, strong) UIButton* signOutButton;
 @property(nonatomic, strong) UIImageView* avatar;
+@property(nonatomic, strong) UIView* visibilityCard;
+@property(nonatomic, strong) UILabel* visibilityTitle;
+@property(nonatomic, strong) UILabel* visibilityHint;
+@property(nonatomic, strong) UISwitch* visibilitySwitch;
 @property(nonatomic, strong) NSTimer* timer;
 @property(nonatomic) uint32_t revision;
 @property(nonatomic, copy) NSString* shownURL;
@@ -81,6 +85,16 @@
   self.connectHint = [self label:[PhoenixTheme regular:15] color:[PhoenixTheme subtext] in:self.connectCard];
   self.connectHint.text = @"Play something in Spotify on your phone, tap the devices icon and choose “Phoenix Player”. The iPad signs in with that account and keeps it.";
   self.connectButton = nil;
+  self.visibilityCard = [self card];
+  self.visibilityTitle = [self label:[PhoenixTheme bold:17] color:[PhoenixTheme text] in:self.visibilityCard];
+  self.visibilityTitle.text = @"Visible on this network";
+  self.visibilityHint = [self label:[PhoenixTheme regular:14] color:[PhoenixTheme subtext] in:self.visibilityCard];
+  self.visibilityHint.text = @"Phones on this Wi-Fi can choose Phoenix Player in Spotify's device list. Turning it off keeps the QR sign-in available.";
+  self.visibilitySwitch = [[UISwitch alloc] init];
+  self.visibilitySwitch.onTintColor = [PhoenixTheme green];
+  self.visibilitySwitch.on = ipad_engine_discoverable() != 0;
+  [self.visibilitySwitch addTarget:self action:@selector(visibilityChanged) forControlEvents:UIControlEventValueChanged];
+  [self.visibilityCard addSubview:self.visibilitySwitch];
   [self render:@{@"state": @"idle"}];
   if (![PlayerModel shared].ready) [self newCode];
   [self applyMode];
@@ -125,6 +139,13 @@
   self.retryButton.frame = CGRectMake(206, 60 + qr + 236, 140, 32);
   self.connectTitle.frame = CGRectMake(24, 20, inner, 26);
   self.connectHint.frame = CGRectMake(24, 56, inner, 110);
+  CGRect connect = self.connectCard.frame;
+  self.visibilityCard.frame = signedIn ? CGRectMake(32, 220, width - 64, 110) : CGRectMake(connect.origin.x, connect.origin.y + connect.size.height + gap, connect.size.width, 110);
+  CGFloat vw = self.visibilityCard.frame.size.width;
+  self.visibilityTitle.frame = CGRectMake(24, 18, vw - 120, 24);
+  self.visibilityHint.frame = CGRectMake(24, 46, vw - 120, 56);
+  self.visibilitySwitch.frame = CGRectMake(vw - 24 - 51, 22, 51, 31);
+  self.connectCard.alpha = self.visibilitySwitch.on ? 1 : 0.4;
   self.connectButton.frame = CGRectMake(24, 180, 250, 32);
 }
 - (UIImage*)qrFor:(NSString*)text {
@@ -193,6 +214,10 @@
     [self dismissViewControllerAnimated:YES completion:nil];
   }]];
   [self presentViewController:alert animated:YES completion:nil];
+}
+- (void)visibilityChanged {
+  ipad_engine_set_discoverable(self.visibilitySwitch.on);
+  self.connectCard.alpha = self.visibilitySwitch.on ? 1 : 0.4;
 }
 - (void)close { ipad_device_auth_cancel(); [self dismissViewControllerAnimated:YES completion:nil]; }
 @end
