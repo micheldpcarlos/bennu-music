@@ -10,7 +10,9 @@
 #import "../../auth/AuthStore.h"
 static NSDictionary* queryOf(NSURL* url) {
   NSMutableDictionary* result = [NSMutableDictionary dictionary];
-  for (NSString* pair in [url.query componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"&;"]]) {
+  // Shells running `uiopen` split at & and ; so test URLs encode the separator as %26 or %3B.
+  NSString* raw = [[url.query stringByReplacingOccurrencesOfString:@"%26" withString:@"&"] stringByReplacingOccurrencesOfString:@"%3B" withString:@"&"];
+  for (NSString* pair in [raw componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"&;"]]) {
     NSRange equal = [pair rangeOfString:@"="];
     if (equal.location == NSNotFound) continue;
     NSString* key = [pair substringToIndex:equal.location];

@@ -289,9 +289,9 @@ static UIColor* hsv(CGFloat h, CGFloat s, CGFloat v, CGFloat a) { return [UIColo
 // ---- Plenoptic: layered landscapes of waves
 - (void)drawPlenoptic:(CGContextRef)c w:(CGFloat)w h:(CGFloat)h preset:(NSString*)p {
   int layers = 7;
-  for (int l = layers - 1; l >= 0; l--) {
+  for (int l = 0; l < layers; l++) {   // far ridges first, near ones last
     CGFloat hue = [p isEqualToString:@"Lava"] ? 0.02 + l * 0.02 : [p isEqualToString:@"Clouds"] ? 0.6 : [p isEqualToString:@"Canyon"] ? 0.07 + l * 0.01 : [p isEqualToString:@"Tide"] ? 0.5 + l * 0.03 : 0.3 + l * 0.08;
-    CGContextSetFillColorWithColor(c, hsv(hue, [p isEqualToString:@"Clouds"] ? 0.2 : 0.8, 0.3 + l * 0.1, 1).CGColor);
+    CGContextSetFillColorWithColor(c, hsv(hue, [p isEqualToString:@"Clouds"] ? 0.2 : 0.8, 0.9 - l * 0.1, 1).CGColor);
     CGContextBeginPath(c); CGContextMoveToPoint(c, 0, h);
     for (int i = 0; i <= 48; i++) {
       CGFloat x = i * w / 48;
