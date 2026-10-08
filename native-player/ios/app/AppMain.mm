@@ -12,6 +12,7 @@
 int ipad_cspot_engine_main(int argc, char** argv);
 
 static std::atomic<bool> engineRunning{false};
+static void startEngine();
 static void* runEngine(void*) {
   @autoreleasepool {
     char name[] = "ipad-media-player";
@@ -22,9 +23,21 @@ static void* runEngine(void*) {
     try {
       int result = ipad_cspot_engine_main(3, arguments);
       std::fprintf(stderr, "APP: engine returned %d\n", result);
+      if (ipad_engine_stop_requested()) {
+        ipad_engine_stop_clear();
+        engineRunning.store(false);
+        std::fprintf(stderr, "APP: restarting engine after sign-out\n");
+        dispatch_async(dispatch_get_main_queue(), ^{ startEngine(); });
+        return nullptr;
+      }
       ipad_player_failed(result ? "The player could not connect." : "The player stopped.");
     } catch (const std::exception& error) {
       std::fprintf(stderr, "APP: engine exception: %s\n", error.what());
+      if (ipad_engine_stop_requested()) {
+        ipad_engine_stop_clear(); engineRunning.store(false);
+        dispatch_async(dispatch_get_main_queue(), ^{ startEngine(); });
+        return nullptr;
+      }
       ipad_player_failed(error.what());
     } catch (...) {
       std::fprintf(stderr, "APP: engine failed with unknown exception\n");

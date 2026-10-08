@@ -30,6 +30,12 @@ int ipad_player_seek(uint32_t positionMs);
 // Current queue as JSON {"uris":[...],"index":n,"context":"..."} (what was last loaded locally).
 uint64_t ipad_player_queue(char* output, uint32_t capacity);
 
+// Sign-out: asks the running engine to disconnect; the app restarts it, which then waits
+// for a new account (QR sign-in or Connect pairing).
+void ipad_engine_stop(void);
+int ipad_engine_stop_requested(void);
+void ipad_engine_stop_clear(void);
+
 // --- Engine -> bridge notifications ---
 void ipad_player_waiting(void);
 void ipad_player_connecting(void);
@@ -54,6 +60,8 @@ void setPlaybackHandlers(std::function<bool(const std::vector<std::string>&, siz
 // Catalog service: (kind, argument, publish(json, done)). Invoked on a worker thread per request.
 using CatalogPublish = std::function<void(const std::string&, bool)>;
 void setCatalogService(std::function<void(const std::string&, const std::string&, const CatalogPublish&)> service);
+void setStopHandler(std::function<void()> handler);
+bool stopRequested();
 void dispatchPending();
 void clearControlHandler();
 }

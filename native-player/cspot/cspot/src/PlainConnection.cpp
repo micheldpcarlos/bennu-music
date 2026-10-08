@@ -193,6 +193,10 @@ size_t PlainConnection::writeBlock(const std::vector<uint8_t>& data) {
   return data.size();
 }
 
+void PlainConnection::interrupt() {
+  if (this->apSock >= 0) shutdown(this->apSock, SHUT_RDWR);
+}
+
 void PlainConnection::close() {
   if (this->apSock < 0)
     return;

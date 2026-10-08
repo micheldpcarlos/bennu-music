@@ -28,6 +28,8 @@ class PlainConnection {
    */
   void connect(const std::string& apAddress);
   void close();
+  // Wakes a thread blocked in a read without closing the descriptor (safe from another thread).
+  void interrupt();
 
   timeoutCallback timeoutHandler;
   std::vector<uint8_t> sendPrefixPacket(const std::vector<uint8_t>& prefix,

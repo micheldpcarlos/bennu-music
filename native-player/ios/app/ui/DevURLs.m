@@ -68,7 +68,8 @@ BOOL PhoenixHandleURL(NSURL* url) {
     PhoenixViewController* top = (PhoenixViewController*)navigation.topViewController;
     if ([top isKindOfClass:PhoenixViewController.class]) [top.table setContentOffset:CGPointMake(0, [query[@"y"] floatValue]) animated:NO];
   } else if ([action isEqualToString:@"signout"]) {
-    if (ipad_auth_clear()) exit(0);
+    if (tabs.presentedViewController) [tabs dismissViewControllerAnimated:NO completion:nil];
+    if (ipad_auth_clear()) [[PlayerModel shared] signOut];
   } else if ([action isEqualToString:@"pause"]) {
     [[PlayerModel shared] togglePause];
   } else if ([action isEqualToString:@"next"]) {

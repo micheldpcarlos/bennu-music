@@ -9,6 +9,7 @@
 #include <exception>
 #include <map>
 #include <mutex>
+#include <atomic>
 #include <random>
 #include <string>
 #include <thread>
@@ -22,6 +23,8 @@ std::function<bool(int)> control;
 std::function<bool(const std::vector<std::string>&, size_t, const std::string&)> playTracks;
 std::function<void(uint32_t)> seekTrack;
 std::function<void(const std::string&, const std::string&, const ipad_player::CatalogPublish&)> catalogService;
+std::function<void()> stopHandler;
+std::atomic<bool> stopFlag{false};
 struct PendingPlay { std::vector<std::string> uris; size_t index = 0; std::string context; bool valid = false; };
 PendingPlay pendingPlay;
 bool pendingSeek = false; uint32_t pendingSeekMs = 0;
@@ -115,6 +118,14 @@ void ipad_catalog_forget(uint64_t request) {
   catalogResults.erase(request);
 }
 
+void ipad_engine_stop(void) {
+  std::function<void()> handler;
+  { std::lock_guard<std::mutex> lock(bridgeMutex); stopFlag = true; handler = stopHandler; }
+  std::fprintf(stderr, "APP: engine stop requested\n");
+  if (handler) { try { handler(); } catch (...) {} }
+}
+int ipad_engine_stop_requested(void) { return stopFlag ? 1 : 0; }
+void ipad_engine_stop_clear(void) { stopFlag = false; }
 void ipad_player_snapshot(IPadPlayerSnapshot* output) {
   if (!output) return;
   std::lock_guard<std::mutex> lock(bridgeMutex);
@@ -177,7 +188,7 @@ uint64_t ipad_player_queue(char* output, uint32_t capacity) {
 
 void ipad_player_waiting() {
   std::lock_guard<std::mutex> lock(bridgeMutex);
-  state = {}; state.paused = 1; resetHandlersLocked(); catalogService = nullptr;
+  state = {}; state.paused = 1; resetHandlersLocked(); catalogService = nullptr; stopHandler = nullptr;
   positionAt = Clock::now();
 }
 void ipad_player_connecting() {
@@ -238,8 +249,13 @@ void setCatalogService(std::function<void(const std::string&, const std::string&
 }
 void clearControlHandler() {
   std::lock_guard<std::mutex> lock(bridgeMutex);
-  resetHandlersLocked(); catalogService = nullptr;
+  resetHandlersLocked(); catalogService = nullptr; stopHandler = nullptr;
 }
+void setStopHandler(std::function<void()> handler) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  stopHandler = std::move(handler);
+}
+bool stopRequested() { return stopFlag; }
 void dispatchPending() {
   PendingPlay play; bool seek = false; uint32_t seekMs = 0;
   std::function<bool(const std::vector<std::string>&, size_t, const std::string&)> playHandler;

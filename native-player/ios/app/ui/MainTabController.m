@@ -43,13 +43,12 @@ static MainTabController* sharedTabController;
   [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixPlayerChanged object:nil];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
-// No saved account: the engine stays in the waiting state, so open the welcome setup once.
+// No saved account: the engine stays in the waiting state, so open the welcome setup.
 - (void)playerChanged {
-  static BOOL shown = NO;
-  if (shown || self.presentedViewController || [PlayerModel shared].snapshot.state != IPadWaiting) return;
   static int waitingTicks = 0;
-  if (++waitingTicks < 4) return;  // two seconds of waiting, to let a saved account load first
-  shown = YES;
+  if ([PlayerModel shared].snapshot.state != IPadWaiting) { waitingTicks = 0; return; }
+  if (self.presentedViewController) return;
+  if (++waitingTicks < 4) return;  // two seconds, to let a saved account load first
   SetupViewController* setup = [[SetupViewController alloc] init];
   setup.welcome = YES;
   setup.modalPresentationStyle = UIModalPresentationFullScreen;

@@ -188,21 +188,10 @@ int main(int argc, char** argv) {
     auto loginBlob = std::make_shared<cspot::LoginBlob>(kDeviceName);
 
 #ifdef CSPOT_IOS_APP
-    const char* pairingFlag = "/var/mobile/Documents/cspot-use-connect-pairing";
-    bool useConnectPairing = std::ifstream(pairingFlag).good();
-    if (useConnectPairing) {
-      std::fprintf(stderr, "AUTH: one-time Connect pairing mode; select %s on your phone\n", kDeviceName);
-      zeroconfServer->blob = std::make_shared<cspot::LoginBlob>(kDeviceName);
-      auto* server = zeroconfServer.get();
-      zeroconfServer->onAuthSuccess = [loginBlob, loggedInSemaphore, server]() {
-        // Copy before signaling; HTTP discovery uses its own blob, never the live engine blob.
-        loginBlob->loadJson(server->blob->toJson());
-        loggedInSemaphore->give();
-      };
-      zeroconfServer->registerHandlers();
-    } else {
-    std::fprintf(stderr, "QR AUTH: waiting for a saved account\n");
-    for (;;) {
+    // No saved account: listen for a Spotify Connect pairing from the phone AND poll the Keychain
+    // (filled by the QR sign-in screen). Whichever happens first logs the player in.
+    std::atomic<bool> pairedFromPhone{false};
+    {
       char savedCredentials[4096] = {};
       int savedAccount = ipad_auth_load(savedCredentials, sizeof(savedCredentials));
       if (savedAccount < 0) throw std::runtime_error("Account storage failed. Check AUTH log status.");
@@ -210,10 +199,32 @@ int main(int argc, char** argv) {
         loginBlob->loadJson(savedCredentials);
         std::fill(savedCredentials, savedCredentials + sizeof(savedCredentials), '\0');
         loggedInSemaphore->give();
-        break;
+      } else {
+        std::fprintf(stderr, "AUTH: no saved account; waiting for QR sign-in or Connect pairing\n");
+        zeroconfServer->blob = std::make_shared<cspot::LoginBlob>(kDeviceName);
+        auto* server = zeroconfServer.get();
+        zeroconfServer->onAuthSuccess = [loginBlob, server, &pairedFromPhone]() {
+          // Copy before signaling; HTTP discovery uses its own blob, never the live engine blob.
+          loginBlob->loadJson(server->blob->toJson());
+          pairedFromPhone = true;
+        };
+        zeroconfServer->registerHandlers();
+        for (;;) {
+          if (pairedFromPhone) { std::fprintf(stderr, "AUTH: paired from the phone\n"); break; }
+          if (ipad_player::stopRequested()) break;
+          int account = ipad_auth_load(savedCredentials, sizeof(savedCredentials));
+          if (account < 0) throw std::runtime_error("Account storage failed. Check AUTH log status.");
+          if (account > 0) {
+            loginBlob->loadJson(savedCredentials);
+            std::fill(savedCredentials, savedCredentials + sizeof(savedCredentials), '\0');
+            std::fprintf(stderr, "AUTH: account arrived from the sign-in screen\n");
+            break;
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+        if (ipad_player::stopRequested()) return 0;
+        loggedInSemaphore->give();
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
     }
 #else
     // Login using Command line arguments
@@ -273,8 +284,6 @@ int main(int argc, char** argv) {
 #ifdef CSPOT_IOS_APP
       if (!ipad_auth_save(loginBlob->toJson().c_str()))
         throw std::runtime_error("Could not save reusable credentials in Keychain.");
-      if (useConnectPairing && std::remove(pairingFlag) != 0)
-        std::fprintf(stderr, "AUTH: pairing flag cleanup failed; remove it before the next launch\n");
       std::fprintf(stderr, "AUTH: account login passed and credentials saved; ready for playback\n");
 #endif
       // when credentials file is set, then store reusable credentials
@@ -334,6 +343,12 @@ int main(int argc, char** argv) {
           [weakHandler](uint32_t positionMs) {
             auto active = weakHandler.lock(); if (active) active->seekTo(positionMs);
           });
+      std::weak_ptr<cspot::Context> weakContext(ctx);
+      ipad_player::setStopHandler([weakContext, &isRunning]() {
+        isRunning = false;
+        // Only shut the socket down here; the engine thread notices, leaves its loop and tears down.
+        if (auto context = weakContext.lock()) { try { context->session->interrupt(); } catch (...) {} }
+      });
       ipad_player_ready();
       ipad_player::runCatalogProbeIfRequested(ctx);
 #endif
@@ -343,16 +358,22 @@ int main(int argc, char** argv) {
       while (isRunning) {
 #ifdef CSPOT_IOS_APP
         ipad_player::dispatchPending();
-#endif
+        try { ctx->session->handlePacket(); }
+        catch (...) { if (ipad_player::stopRequested()) break; throw; }
+#else
         ctx->session->handlePacket();
+#endif
       }
 
-      // Never happens, but required for above case
 #ifdef CSPOT_IOS_APP
       ipad_player::clearControlHandler();
+      std::fprintf(stderr, "APP: engine loop ended; disconnecting\n");
 #endif
       handler->disconnect();
       player->disconnect();
+#ifdef CSPOT_IOS_APP
+      std::fprintf(stderr, "APP: engine disconnected\n");
+#endif
     }
 
   } catch (std::invalid_argument e) {

@@ -9,6 +9,9 @@ extern NSString* const PhoenixPlayerChanged;  // posted on the main thread 2x pe
 @property(nonatomic, copy, readonly) NSString* contextName;   // what is playing from
 @property(nonatomic, copy, readonly) NSString* contextUri;
 @property(nonatomic, readonly) BOOL shuffle;
+@property(nonatomic, copy) NSString* accountName;   // from the profile, set by Home
+@property(nonatomic, copy) NSString* accountImage;  // profile picture url
+- (void)signOut;
 - (void)start;
 - (void)refresh;
 - (void)togglePause;

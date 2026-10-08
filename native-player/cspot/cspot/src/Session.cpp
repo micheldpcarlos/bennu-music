@@ -112,6 +112,10 @@ std::vector<uint8_t> Session::authenticate(std::shared_ptr<LoginBlob> blob) {
   return std::vector<uint8_t>(0);
 }
 
+void Session::interrupt() {
+  if (this->conn) this->conn->interrupt();
+}
+
 void Session::close() {
   this->conn->close();
 }

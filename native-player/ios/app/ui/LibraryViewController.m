@@ -42,6 +42,7 @@
 }
 - (void)playerChanged {
   if ([PlayerModel shared].ready && !self.loadedOnce) { self.loadedOnce = YES; [self load]; }
+  if ([PlayerModel shared].snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; self.playlists = nil; self.recent = nil; [self rebuild]; }
 }
 - (void)load {
   self.status.text = @"Loading…";

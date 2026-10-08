@@ -4,6 +4,7 @@
 #import "PlayerModel.h"
 #import "../../auth/DeviceAuth.h"
 #import "../../auth/AuthStore.h"
+#import "ImageCache.h"
 @interface SetupViewController ()
 @property(nonatomic, strong) UIButton* closeButton;
 @property(nonatomic, strong) UILabel* titleLabel;
@@ -21,6 +22,7 @@
 @property(nonatomic, strong) UILabel* connectHint;
 @property(nonatomic, strong) UIButton* connectButton;
 @property(nonatomic, strong) UIButton* signOutButton;
+@property(nonatomic, strong) UIImageView* avatar;
 @property(nonatomic, strong) NSTimer* timer;
 @property(nonatomic) uint32_t revision;
 @property(nonatomic, copy) NSString* shownURL;
@@ -50,6 +52,10 @@
   [self.signOutButton addTarget:self action:@selector(signOut) forControlEvents:UIControlEventTouchUpInside];
   self.signOutButton.hidden = YES;
   [self.view addSubview:self.signOutButton];
+  self.avatar = [[UIImageView alloc] init];
+  self.avatar.contentMode = UIViewContentModeScaleAspectFill; self.avatar.clipsToBounds = YES; self.avatar.layer.cornerRadius = 40;
+  self.avatar.hidden = YES;
+  [self.view addSubview:self.avatar];
   self.accountLabel = [self label:[PhoenixTheme regular:15] color:[PhoenixTheme subtext] in:self.view];
   self.qrCard = [self card];
   self.qrTitle = [self label:[PhoenixTheme bold:20] color:[PhoenixTheme text] in:self.qrCard];
@@ -71,14 +77,23 @@
   [self.qrCard addSubview:self.retryButton];
   self.connectCard = [self card];
   self.connectTitle = [self label:[PhoenixTheme bold:20] color:[PhoenixTheme text] in:self.connectCard];
-  self.connectTitle.text = @"Or pair with Spotify Connect";
+  self.connectTitle.text = @"Or use your phone's Spotify app";
   self.connectHint = [self label:[PhoenixTheme regular:15] color:[PhoenixTheme subtext] in:self.connectCard];
-  self.connectHint.text = @"Play something in Spotify on your phone, tap the devices icon and choose “Phoenix Player”. If the iPad is not listed, tap the button, then close and reopen this app.";
-  self.connectButton = [PhoenixTheme pillButton:@"Enable pairing on next launch"];
-  [self.connectButton addTarget:self action:@selector(enablePairing) forControlEvents:UIControlEventTouchUpInside];
-  [self.connectCard addSubview:self.connectButton];
+  self.connectHint.text = @"Play something in Spotify on your phone, tap the devices icon and choose “Phoenix Player”. The iPad signs in with that account and keeps it.";
+  self.connectButton = nil;
   [self render:@{@"state": @"idle"}];
-  [self newCode];
+  if (![PlayerModel shared].ready) [self newCode];
+  [self applyMode];
+}
+// Signed in: show the account and Sign out only. Not signed in: both sign-in options.
+- (void)applyMode {
+  BOOL ready = [PlayerModel shared].ready;
+  self.qrCard.hidden = ready; self.connectCard.hidden = ready;
+  self.signOutButton.hidden = !ready;
+  self.avatar.hidden = !ready;
+  if (ready) [[ImageCache shared] load:[PlayerModel shared].accountImage into:self.avatar placeholder:[PhoenixTheme icon:@"account" size:80 color:[PhoenixTheme subtext]]];
+  [self.view setNeedsLayout];
+  self.titleLabel.text = ready ? @"Spotify account" : self.welcome ? @"Welcome to Phoenix Player" : @"Connect Spotify";
 }
 - (void)viewWillAppear:(BOOL)animated {
   [super viewWillAppear:animated];
@@ -91,8 +106,10 @@
   BOOL wide = width > 700;
   self.closeButton.frame = CGRectMake(width - 60, 24, 44, 44);
   self.titleLabel.frame = CGRectMake(32, 40, width - 120, 40);
-  self.accountLabel.frame = CGRectMake(32, 84, width - 240, 22);
-  self.signOutButton.frame = CGRectMake(width - 32 - 110, 78, 110, 32);
+  BOOL signedIn = [PlayerModel shared].ready;
+  self.avatar.frame = CGRectMake(32, 100, 80, 80);
+  self.accountLabel.frame = signedIn ? CGRectMake(128, 110, width - 160, 44) : CGRectMake(32, 84, width - 64, 44);
+  self.signOutButton.frame = CGRectMake(128, 156, 110, 32);
   CGFloat top = 124, gap = 24;
   CGFloat cardWidth = wide ? (width - 32 * 2 - gap) / 2 : width - 64;
   CGFloat inner = cardWidth - 48, qr = MIN(220, inner);
@@ -131,9 +148,10 @@
   char buffer[2048];
   uint32_t revision = ipad_device_auth_status(buffer, sizeof(buffer));
   PlayerModel* model = [PlayerModel shared];
-  self.accountLabel.text = model.ready ? @"Connected. Signing in again switches the account on the next launch."
-                         : self.welcome ? @"Sign in with your Spotify Premium account to start." : @"No account connected yet.";
-  self.signOutButton.hidden = !model.ready;
+  NSString* account = model.accountName.length ? model.accountName : @"your Spotify account";
+  self.accountLabel.text = model.ready ? [NSString stringWithFormat:@"Signed in as %@. Sign out to use a different account.", account]
+                         : self.welcome ? @"Sign in with a Spotify Premium account to start." : @"Not signed in.";
+  [self applyMode];
   if (self.welcome && model.ready) { [self dismissViewControllerAnimated:YES completion:nil]; return; }
   if (!revision || revision == self.revision) return;
   self.revision = revision;
@@ -166,20 +184,5 @@
   if (![phase isEqualToString:@"failed"]) self.retryButton.hidden = YES;
 }
 - (void)retryLogin { if (!ipad_device_auth_retry()) self.qrStatus.text = @"Nothing to retry. Get a new code."; }
-- (void)enablePairing {
-  NSString* marker = @"/var/mobile/Documents/cspot-use-connect-pairing";
-  BOOL ok = [@"" writeToFile:marker atomically:YES encoding:NSUTF8StringEncoding error:nil];
-  self.connectHint.text = ok ? @"Pairing is enabled for the next launch. Close Phoenix Player from the app switcher, open it again, then pick “Phoenix Player” in Spotify's device list on your phone."
-                            : @"Could not enable pairing (Documents folder not writable).";
-}
-- (void)signOut {
-  UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"Sign out of Spotify?" message:@"The saved account is removed from this iPad and the app closes. Open it again to sign in." preferredStyle:UIAlertControllerStyleAlert];
-  [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-  [alert addAction:[UIAlertAction actionWithTitle:@"Sign out" style:UIAlertActionStyleDestructive handler:^(UIAlertAction* action) {
-    if (ipad_auth_clear()) exit(0);
-    self.accountLabel.text = @"Could not remove the saved account.";
-  }]];
-  [self presentViewController:alert animated:YES completion:nil];
-}
 - (void)close { ipad_device_auth_cancel(); [self dismissViewControllerAnimated:YES completion:nil]; }
 @end

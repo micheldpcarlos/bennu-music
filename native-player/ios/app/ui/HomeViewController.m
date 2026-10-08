@@ -32,6 +32,8 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   self.accountButton = [UIButton buttonWithType:UIButtonTypeCustom];
   [self.accountButton setImage:[PhoenixTheme icon:@"account" size:30 color:[PhoenixTheme text]] forState:UIControlStateNormal];
   [self.accountButton addTarget:self action:@selector(openAccount) forControlEvents:UIControlEventTouchUpInside];
+  self.accountButton.imageView.contentMode = UIViewContentModeScaleAspectFill;
+  self.accountButton.clipsToBounds = YES;
   self.status = [[UILabel alloc] init]; self.status.font = [PhoenixTheme regular:14]; self.status.textColor = [PhoenixTheme subtext]; self.status.numberOfLines = 2;
   for (UIView* view in @[self.greeting, self.accountButton, self.status]) [self.header addSubview:view];
   self.table.tableHeaderView = self.header;
@@ -48,7 +50,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   CGFloat width = self.view.bounds.size.width;
   self.header.frame = CGRectMake(0, 0, width, 100);
   self.greeting.frame = CGRectMake(16, 20, width - 90, 40);
-  self.accountButton.frame = CGRectMake(width - 64, 18, 44, 44);
+  self.accountButton.frame = CGRectMake(width - 56, 24, 36, 36);
   self.status.frame = CGRectMake(16, 62, width - 32, 36);
   self.table.tableHeaderView = self.header;
 }
@@ -56,6 +58,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   PlayerModel* model = [PlayerModel shared];
   IPadPlayerSnapshot snapshot = model.snapshot;
   if (snapshot.state == IPadReady && !self.loadedOnce) { self.loadedOnce = YES; [self load]; }
+  if (snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; [self.accountButton setImage:[PhoenixTheme icon:@"account" size:30 color:[PhoenixTheme text]] forState:UIControlStateNormal]; self.accountButton.layer.cornerRadius = 0; self.recent = nil; self.playlists = nil; [self renderGreeting]; [self.table reloadData]; }
   if (snapshot.state == IPadFailed) self.status.text = [NSString stringWithFormat:@"%s Close and reopen the app to reconnect.", snapshot.error];
   else if (snapshot.state == IPadConnecting) self.status.text = @"Connecting to Spotify…";
   else if (snapshot.state == IPadWaiting) self.status.text = @"No account yet. Tap the account icon to connect Spotify.";
@@ -75,8 +78,16 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   self.profileRequest = [[CatalogClient shared] request:@"profile" argument:@"" update:^(NSDictionary* json, BOOL done) {
     HomeViewController* owner = weakSelf; if (!owner) return;
     NSString* name = json[@"name"];
-    if ([name isKindOfClass:NSString.class] && name.length && ![owner.greeting.text containsString:@","])
+    NSString* image = json[@"image"];
+    if ([image isKindOfClass:NSString.class] && image.length) {
+      [PlayerModel shared].accountImage = image;
+      [owner showAvatar:image];
+    }
+    if ([name isKindOfClass:NSString.class] && name.length) {
+      [PlayerModel shared].accountName = name;
+      [owner renderGreeting];
       owner.greeting.text = [NSString stringWithFormat:@"%@, %@", owner.greeting.text, [name componentsSeparatedByString:@" "].firstObject];
+    }
   }];
   self.playlistsRequest = [[CatalogClient shared] request:@"playlists" argument:@"" update:^(NSDictionary* json, BOOL done) {
     HomeViewController* owner = weakSelf; if (!owner) return;
@@ -89,6 +100,14 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
       }
     owner.playlists = tiles;
     [owner.table reloadData];
+  }];
+}
+- (void)showAvatar:(NSString*)url {
+  __weak HomeViewController* weakSelf = self;
+  [[ImageCache shared] load:url completion:^(UIImage* image) {
+    HomeViewController* owner = weakSelf; if (!owner || !image) return;
+    [owner.accountButton setImage:[image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal] forState:UIControlStateNormal];
+    owner.accountButton.layer.cornerRadius = 18;
   }];
 }
 - (void)openAccount {

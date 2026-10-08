@@ -100,4 +100,9 @@ NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
   }];
 }
 - (NSArray*)queueURIs { return self.queue ?: @[]; }
+- (void)signOut {
+  self.accountName = nil; self.accountImage = nil; self.contextName = nil; self.contextUri = nil; self.queue = nil;
+  ipad_engine_stop();
+  [self refresh];
+}
 @end
