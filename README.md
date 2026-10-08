@@ -29,8 +29,6 @@ loop.
   choosing and applying one is up to you.
 - **A Spotify Premium account.** Spotify Connect and streaming are Premium features. Free
   accounts cannot sign in or play.
-- **Wi-Fi.** Playback with the screen off keeps Wi-Fi alive; the device otherwise drops it
-  when locked.
 
 ## Install
 
@@ -187,6 +185,9 @@ kind without a rebuild.
 ## Known limits
 
 - No write operations yet (like, add to playlist, follow).
+- When the device is locked and nothing is playing, iOS turns Wi-Fi off after a few minutes,
+  so it disappears from your phone's Connect list until you wake it. While music plays, the
+  screen can stay off indefinitely.
 - Artist and album search is derived from matching tracks; artists with no matching tracks
   do not appear. Spotify's dedicated search endpoint rejects this client.
 - Spotify changes its internal endpoints a few times a year. The catalog degrades
