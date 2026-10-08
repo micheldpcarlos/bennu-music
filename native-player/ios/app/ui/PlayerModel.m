@@ -4,6 +4,7 @@
 #import "ImageCache.h"
 #import <MediaPlayer/MediaPlayer.h>
 NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
+NSString* const PhoenixTrackChanged = @"PhoenixTrackChanged";
 @interface PlayerModel ()
 @property(nonatomic) IPadPlayerSnapshot snapshot;
 @property(nonatomic, copy) NSString* contextName;
@@ -47,9 +48,13 @@ NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
 - (void)refresh {
   IPadPlayerSnapshot snapshot; memset(&snapshot, 0, sizeof snapshot);
   ipad_player_snapshot(&snapshot);
+  IPadPlayerSnapshot previous = self.snapshot;
   self.snapshot = snapshot;
   [self updateNowPlayingInfo];
   [NSNotificationCenter.defaultCenter postNotificationName:PhoenixPlayerChanged object:self];
+  if (strcmp(previous.trackId, snapshot.trackId) != 0 || previous.paused != snapshot.paused || previous.state != snapshot.state ||
+      previous.hasTrack != snapshot.hasTrack || previous.reconnecting != snapshot.reconnecting || previous.repeat != snapshot.repeat)
+    [NSNotificationCenter.defaultCenter postNotificationName:PhoenixTrackChanged object:self];
 }
 - (MPRemoteCommandHandlerStatus)remotePlay:(MPRemoteCommandEvent*)event { if (self.snapshot.paused) [self togglePause]; return MPRemoteCommandHandlerStatusSuccess; }
 - (MPRemoteCommandHandlerStatus)remotePause:(MPRemoteCommandEvent*)event { if (!self.snapshot.paused) [self togglePause]; return MPRemoteCommandHandlerStatusSuccess; }
@@ -108,11 +113,16 @@ NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
   }];
 }
 - (NSArray*)queueURIs {
+  static uint64_t lastRevision = 0; static NSArray* lastQueue = nil;
   char buffer[65536];
-  if (!ipad_player_queue(buffer, sizeof(buffer)) || !buffer[0]) return self.queue ?: @[];
+  uint64_t revision = ipad_player_queue(buffer, sizeof(buffer));
+  if (!revision || !buffer[0]) return self.queue ?: @[];
+  if (revision == lastRevision && lastQueue) return lastQueue;
   NSDictionary* json = [NSJSONSerialization JSONObjectWithData:[NSData dataWithBytes:buffer length:strlen(buffer)] options:0 error:nil];
   NSArray* uris = [json isKindOfClass:NSDictionary.class] ? json[@"uris"] : nil;
-  return [uris isKindOfClass:NSArray.class] ? uris : (self.queue ?: @[]);
+  if (![uris isKindOfClass:NSArray.class]) return self.queue ?: @[];
+  lastRevision = revision; lastQueue = uris;
+  return uris;
 }
 - (void)signOut {
   self.accountName = nil; self.accountImage = nil; self.contextName = nil; self.contextUri = nil; self.queue = nil;

@@ -2,4 +2,5 @@
 #import "Navigation.h"
 @interface SearchViewController : PhoenixViewController
 - (void)searchFor:(NSString*)query;
+- (void)cancel;
 @end

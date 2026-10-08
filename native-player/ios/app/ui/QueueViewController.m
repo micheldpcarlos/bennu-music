@@ -22,7 +22,7 @@
   [self.closeButton setImage:[PhoenixTheme icon:@"chevronDown" size:28 color:[PhoenixTheme text]] forState:UIControlStateNormal];
   [self.closeButton addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:self.closeButton];
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixPlayerChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
   [self reload];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; [self.request cancel]; }

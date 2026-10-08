@@ -29,7 +29,7 @@
   [self.header addSubview:self.titleLabel]; [self.header addSubview:self.status];
   self.table.tableHeaderView = self.header;
   [self rebuild];
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixPlayerChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
 - (void)viewDidLayoutSubviews {

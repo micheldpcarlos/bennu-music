@@ -67,6 +67,10 @@ BOOL PhoenixHandleURL(NSURL* url) {
     UINavigationController* navigation = (UINavigationController*)tabs.selectedViewController;
     PhoenixViewController* top = (PhoenixViewController*)navigation.topViewController;
     if ([top isKindOfClass:PhoenixViewController.class]) [top.table setContentOffset:CGPointMake(0, [query[@"y"] floatValue]) animated:NO];
+  } else if ([action isEqualToString:@"cancelsearch"]) {
+    UINavigationController* navigation = tabs.viewControllers[1];
+    SearchViewController* search = (SearchViewController*)navigation.viewControllers.firstObject;
+    [search cancel];
   } else if ([action isEqualToString:@"repeat"]) {
     ipad_player_set_repeat([query[@"mode"] intValue]);
   } else if ([action isEqualToString:@"enqueue"]) {

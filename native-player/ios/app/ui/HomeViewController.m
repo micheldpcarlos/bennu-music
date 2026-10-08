@@ -40,7 +40,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
   self.status = [[UILabel alloc] init]; self.status.font = [PhoenixTheme regular:14]; self.status.textColor = [PhoenixTheme subtext]; self.status.numberOfLines = 2;
   for (UIView* view in @[self.greeting, self.accountButton, self.status]) [self.header addSubview:view];
   self.table.tableHeaderView = self.header;
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixPlayerChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
   [self renderGreeting];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }

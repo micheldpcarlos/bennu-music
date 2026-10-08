@@ -47,7 +47,7 @@ enum { SectionPopular = 0, SectionAlbums, SectionSingles, SectionAbout, SectionC
   [self.shuffleButton addTarget:self action:@selector(shufflePopular) forControlEvents:UIControlEventTouchUpInside];
   for (UIView* view in @[self.portrait, self.titleLabel, self.status, self.playButton, self.shuffleButton]) [self.header addSubview:view];
   self.table.tableHeaderView = self.header;
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixPlayerChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
   [self load];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; [self.request cancel]; }
@@ -118,6 +118,7 @@ enum { SectionPopular = 0, SectionAlbums, SectionSingles, SectionAbout, SectionC
   return [ShelfCell height];
 }
 - (void)configure:(TrackCell*)cell at:(NSIndexPath*)path {
+  if (path.row >= (NSInteger)self.topTracks.count) return;
   NSDictionary* track = self.topTracks[path.row];
   NSString* playingId = @([PlayerModel shared].snapshot.trackId);
   [cell showTrack:track number:path.row + 1 playing:playingId.length && [track[@"id"] isEqualToString:playingId]];

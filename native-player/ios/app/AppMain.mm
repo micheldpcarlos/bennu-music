@@ -109,6 +109,14 @@ static void startEngine() {
   NSString* documents = NSSearchPathForDirectoriesInDomains(
       NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
   NSString* log = [documents stringByAppendingPathComponent:@"cspot-app.log"];
+  // Keep the log bounded: above 1 MB, keep only the last 256 KB before appending.
+  NSDictionary* attributes = [NSFileManager.defaultManager attributesOfItemAtPath:log error:nil];
+  if ([attributes fileSize] > 1024 * 1024) {
+    NSFileHandle* handle = [NSFileHandle fileHandleForReadingAtPath:log];
+    [handle seekToFileOffset:[attributes fileSize] - 256 * 1024];
+    NSData* tail = [handle readDataToEndOfFile]; [handle closeFile];
+    [tail writeToFile:log atomically:YES];
+  }
   std::freopen(log.fileSystemRepresentation, "a", stdout);
   std::freopen(log.fileSystemRepresentation, "a", stderr);
   std::setvbuf(stdout, nullptr, _IOLBF, 0);

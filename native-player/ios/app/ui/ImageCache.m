@@ -29,6 +29,19 @@ static char kImageURLKey;
   }
   return self;
 }
+// Decompresses the image on the calling (background) thread so the first draw on the main
+// thread does not pay for JPEG decoding; also caps very large images for the iPad 2.
+static UIImage* decodedImage(UIImage* image) {
+  if (!image) return nil;
+  CGSize size = image.size;
+  CGFloat scale = MIN(1, 640 / MAX(size.width, size.height));
+  CGSize target = CGSizeMake(floor(size.width * scale), floor(size.height * scale));
+  UIGraphicsBeginImageContextWithOptions(target, YES, 1);
+  [image drawInRect:CGRectMake(0, 0, target.width, target.height)];
+  UIImage* decoded = UIGraphicsGetImageFromCurrentImageContext();
+  UIGraphicsEndImageContext();
+  return decoded ?: image;
+}
 - (NSString*)pathFor:(NSString*)url {
   const char* bytes = url.UTF8String; unsigned char digest[CC_SHA1_DIGEST_LENGTH];
   CC_SHA1(bytes, (CC_LONG)strlen(bytes), digest);
@@ -98,7 +111,7 @@ static char kImageURLKey;
   };
   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
     NSData* disk = [NSData dataWithContentsOfFile:path];
-    UIImage* image = disk ? [UIImage imageWithData:disk] : nil;
+    UIImage* image = disk ? decodedImage([UIImage imageWithData:disk]) : nil;
     if (image) { finish(image); return; }
     NSMutableURLRequest* request = [NSMutableURLRequest requestWithURL:address];
     request.timeoutInterval = 20;
@@ -107,7 +120,7 @@ static char kImageURLKey;
       NSInteger status = [response isKindOfClass:NSHTTPURLResponse.class] ? ((NSHTTPURLResponse*)response).statusCode : 0;
       if (!error && data.length > 0 && data.length < 3 * 1024 * 1024 && status == 200) {
         fetched = [UIImage imageWithData:data];
-        if (fetched) [data writeToFile:path atomically:YES];
+        if (fetched) { [data writeToFile:path atomically:YES]; fetched = decodedImage(fetched); }
       }
       if (!fetched) fprintf(stderr, "IMG: %s/%s failed status=%ld error=%ld %s\n", address.host.UTF8String, address.lastPathComponent.UTF8String ?: "", (long)status, (long)error.code, error.localizedDescription.UTF8String ?: "");
       finish(fetched);

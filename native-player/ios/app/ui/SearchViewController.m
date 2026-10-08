@@ -116,7 +116,7 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
   for (UIView* view in @[self.titleLabel, self.field, self.cancelButton, self.pills, self.status]) [self.header addSubview:view];
   [self.view addSubview:self.header];
   [self stylePills];
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixPlayerChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; [self.request cancel]; [self.debounce invalidate]; }
 - (void)viewDidLayoutSubviews {
@@ -169,9 +169,10 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
   [self showBrowse];
 }
 - (void)showBrowse {
-  self.lastQuery = nil; self.tracks = self.artists = self.albums = @[];
+  self.lastQuery = nil; self.tracks = @[]; self.artists = @[]; self.albums = @[];
   self.status.text = @"";
   self.showingResults = NO;
+  [self.table reloadData];   // the hidden table must not keep rows pointing at the emptied arrays
   [self.browse reloadData];
 }
 - (void)rememberSearch:(NSString*)query {
@@ -201,7 +202,10 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
     [owner.table reloadData];
   }];
 }
-- (void)playerChanged { for (UITableViewCell* cell in self.table.visibleCells) { NSIndexPath* path = [self.table indexPathForCell:cell]; if (path && path.section == SearchSongs) [self configure:(TrackCell*)cell at:path]; } }
+- (void)playerChanged {
+  if (self.table.hidden) return;
+  for (UITableViewCell* cell in self.table.visibleCells) { NSIndexPath* path = [self.table indexPathForCell:cell]; if (path && path.section == SearchSongs && path.row < (NSInteger)self.tracks.count) [self configure:(TrackCell*)cell at:path]; }
+}
 - (void)longPress:(UILongPressGestureRecognizer*)gesture {
   if (gesture.state != UIGestureRecognizerStateBegan) return;
   NSIndexPath* path = [self.table indexPathForRowAtPoint:[gesture locationInView:self.table]];
@@ -227,6 +231,7 @@ static NSString* const kRecentSearches = @"PhoenixRecentSearches";
   return header;
 }
 - (void)configure:(TrackCell*)cell at:(NSIndexPath*)path {
+  if (path.row >= (NSInteger)self.tracks.count) return;
   NSDictionary* track = self.tracks[path.row];
   NSString* playingId = @([PlayerModel shared].snapshot.trackId);
   [cell showTrack:track number:-1 playing:playingId.length && [track[@"id"] isEqualToString:playingId]];

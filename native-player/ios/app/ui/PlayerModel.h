@@ -2,6 +2,7 @@
 #import <UIKit/UIKit.h>
 #import "../../PlayerBridge.h"
 extern NSString* const PhoenixPlayerChanged;  // posted on the main thread 2x per second and after commands
+extern NSString* const PhoenixTrackChanged;   // posted only when the track, pause state or connection state changes
 @interface PlayerModel : NSObject
 + (instancetype)shared;
 @property(nonatomic, readonly) IPadPlayerSnapshot snapshot;

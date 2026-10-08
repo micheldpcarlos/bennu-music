@@ -18,7 +18,20 @@ NSString* PhoenixDuration(uint32_t milliseconds) {
 + (UIFont*)bold:(CGFloat)size { return [UIFont boldSystemFontOfSize:size]; }
 + (UIFont*)regular:(CGFloat)size { return [UIFont systemFontOfSize:size]; }
 
+static NSCache* drawnImages(void) {
+  static NSCache* cache; static dispatch_once_t once;
+  dispatch_once(&once, ^{ cache = [[NSCache alloc] init]; cache.countLimit = 200; });
+  return cache;
+}
 + (UIImage*)icon:(NSString*)name size:(CGFloat)size color:(UIColor*)color {
+  NSString* key = [NSString stringWithFormat:@"icon:%@:%.1f:%@", name, size, color.description];
+  UIImage* cached = [drawnImages() objectForKey:key];
+  if (cached) return cached;
+  UIImage* drawn = [self drawIcon:name size:size color:color];
+  if (drawn) [drawnImages() setObject:drawn forKey:key];
+  return drawn;
+}
++ (UIImage*)drawIcon:(NSString*)name size:(CGFloat)size color:(UIColor*)color {
   UIGraphicsBeginImageContextWithOptions(CGSizeMake(size, size), NO, 0);
   CGContextRef context = UIGraphicsGetCurrentContext();
   [color setStroke]; [color setFill];
@@ -108,6 +121,14 @@ NSString* PhoenixDuration(uint32_t milliseconds) {
   return [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
 }
 + (UIImage*)placeholderArt:(CGFloat)size {
+  NSString* key = [NSString stringWithFormat:@"placeholder:%.0f", size];
+  UIImage* cached = [drawnImages() objectForKey:key];
+  if (cached) return cached;
+  UIImage* drawn = [self drawPlaceholderArt:size];
+  [drawnImages() setObject:drawn forKey:key];
+  return drawn;
+}
++ (UIImage*)drawPlaceholderArt:(CGFloat)size {
   UIGraphicsBeginImageContextWithOptions(CGSizeMake(size, size), YES, 0);
   [[self card] setFill]; UIRectFill(CGRectMake(0, 0, size, size));
   NSDictionary* attributes = @{NSFontAttributeName: [UIFont systemFontOfSize:size * 0.4], NSForegroundColorAttributeName: hex(0x535353)};
@@ -116,6 +137,14 @@ NSString* PhoenixDuration(uint32_t milliseconds) {
   UIImage* image = UIGraphicsGetImageFromCurrentImageContext(); UIGraphicsEndImageContext(); return image;
 }
 + (UIImage*)likedSongsArt:(CGFloat)size {
+  NSString* key = [NSString stringWithFormat:@"liked:%.0f", size];
+  UIImage* cached = [drawnImages() objectForKey:key];
+  if (cached) return cached;
+  UIImage* drawn = [self drawLikedSongsArt:size];
+  [drawnImages() setObject:drawn forKey:key];
+  return drawn;
+}
++ (UIImage*)drawLikedSongsArt:(CGFloat)size {
   UIGraphicsBeginImageContextWithOptions(CGSizeMake(size, size), YES, 0);
   CGContextRef context = UIGraphicsGetCurrentContext();
   CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();

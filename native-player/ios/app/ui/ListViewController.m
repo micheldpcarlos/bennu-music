@@ -55,7 +55,7 @@
   self.titleLabel.text = self.name;
   UIImage* placeholder = [self.kind isEqualToString:@"collection"] ? [PhoenixTheme likedSongsArt:240] : [PhoenixTheme placeholderArt:240];
   [[ImageCache shared] load:self.artworkURL into:self.artwork placeholder:placeholder];
-  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixPlayerChanged object:nil];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
   [self load];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; [self.request cancel]; }
@@ -147,6 +147,7 @@
 }
 - (NSInteger)tableView:(UITableView*)table numberOfRowsInSection:(NSInteger)section { return self.tracks.count; }
 - (void)configure:(TrackCell*)cell at:(NSIndexPath*)path {
+  if (path.row >= (NSInteger)self.tracks.count) return;
   NSDictionary* track = self.tracks[path.row];
   NSString* playingId = @([PlayerModel shared].snapshot.trackId);
   BOOL playing = playingId.length && [track[@"id"] isEqualToString:playingId];
