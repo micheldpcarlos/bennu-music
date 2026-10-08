@@ -82,6 +82,8 @@ BOOL PhoenixHandleURL(NSURL* url) {
     UINavigationController* navigation = tabs.viewControllers[1];
     SearchViewController* search = (SearchViewController*)navigation.viewControllers.firstObject;
     [search cancel];
+  } else if ([action isEqualToString:@"seek"]) {
+    ipad_player_seek((uint32_t)[query[@"ms"] longLongValue]);
   } else if ([action isEqualToString:@"repeat"]) {
     ipad_player_set_repeat([query[@"mode"] intValue]);
   } else if ([action isEqualToString:@"enqueue"]) {

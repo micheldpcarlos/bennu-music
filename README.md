@@ -125,7 +125,7 @@ The app registers the `phoenix://` URL scheme so it can be driven over SSH with 
 | `phoenix://screenshot` | Writes `Documents/phoenix-screen.png` |
 | `phoenix://tab?n=0..2`, `phoenix://back`, `phoenix://scroll?y=800` | Navigation |
 | `phoenix://search?q=...`, `phoenix://open?uri=spotify:album:...`, `phoenix://play?uri=...` | Browsing and playback |
-| `phoenix://nowplaying`, `phoenix://repeat?mode=1`, `phoenix://enqueue?uri=...` | Player |
+| `phoenix://nowplaying`, `phoenix://seek?ms=266000`, `phoenix://repeat?mode=1`, `phoenix://enqueue?uri=...` | Player |
 | `phoenix://viz?family=Battery%26preset=brightsphere`, `phoenix://vizmenu` | Visualizer |
 | `phoenix://setup`, `phoenix://signout`, `phoenix://visible?on=0`, `phoenix://drop` | Account, visibility, simulated connection loss |
 

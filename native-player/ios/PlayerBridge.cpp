@@ -305,7 +305,12 @@ void ipad_player_track(const char* id, const char* title, const char* artist,
   if (trackId.size() == 32) { auto converted = ipad_player::base62FromHex(trackId); if (!converted.empty()) trackId = converted; }
   copyText(state.trackId, trackId.c_str()); copyText(state.title, title);
   copyText(state.artist, artist); copyText(state.album, album); copyText(state.artwork, artwork);
-  state.durationMs = duration; state.hasTrack = 1; state.loading = 0;
+  state.durationMs = duration; state.hasTrack = 1;
+  // An explicit load reports its start position first (PLAYBACK_START -> ipad_player_loading).
+  // A natural transition to the next track reports only TRACK_INFO, and the engine's own
+  // position is 0 there, so start from 0 instead of carrying the previous track's position.
+  if (!state.loading) state.positionMs = 0;
+  state.loading = 0;
   positionAt = Clock::now();
 }
 void ipad_player_paused(int paused) {
