@@ -7,6 +7,7 @@
 #import "SearchViewController.h"
 #import "LibraryViewController.h"
 #import "PlayerModel.h"
+#import "SetupViewController.h"
 static MainTabController* sharedTabController;
 @interface MainTabController ()
 @property(nonatomic, strong) MiniPlayerView* miniPlayer;
@@ -39,6 +40,20 @@ static MainTabController* sharedTabController;
   self.miniPlayer.onTap = ^{ [weakSelf showNowPlaying]; };
   [self.view addSubview:self.miniPlayer];
   [[PlayerModel shared] start];
+  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixPlayerChanged object:nil];
+}
+- (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
+// No saved account: the engine stays in the waiting state, so open the welcome setup once.
+- (void)playerChanged {
+  static BOOL shown = NO;
+  if (shown || self.presentedViewController || [PlayerModel shared].snapshot.state != IPadWaiting) return;
+  static int waitingTicks = 0;
+  if (++waitingTicks < 4) return;  // two seconds of waiting, to let a saved account load first
+  shown = YES;
+  SetupViewController* setup = [[SetupViewController alloc] init];
+  setup.welcome = YES;
+  setup.modalPresentationStyle = UIModalPresentationFullScreen;
+  [self presentViewController:setup animated:YES completion:nil];
 }
 - (void)viewDidLayoutSubviews {
   [super viewDidLayoutSubviews];

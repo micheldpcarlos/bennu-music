@@ -6,6 +6,7 @@
 #import "SearchViewController.h"
 #import "PlayerModel.h"
 #import "SetupViewController.h"
+#import "../../auth/AuthStore.h"
 static NSDictionary* queryOf(NSURL* url) {
   NSMutableDictionary* result = [NSMutableDictionary dictionary];
   for (NSString* pair in [url.query componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"&;"]]) {
@@ -66,6 +67,8 @@ BOOL PhoenixHandleURL(NSURL* url) {
     UINavigationController* navigation = (UINavigationController*)tabs.selectedViewController;
     PhoenixViewController* top = (PhoenixViewController*)navigation.topViewController;
     if ([top isKindOfClass:PhoenixViewController.class]) [top.table setContentOffset:CGPointMake(0, [query[@"y"] floatValue]) animated:NO];
+  } else if ([action isEqualToString:@"signout"]) {
+    if (ipad_auth_clear()) exit(0);
   } else if ([action isEqualToString:@"pause"]) {
     [[PlayerModel shared] togglePause];
   } else if ([action isEqualToString:@"next"]) {

@@ -7,6 +7,8 @@ extern "C" {
 // 1=loaded, 0=not paired, -1=failed. Imports pending credentials before loading.
 int ipad_auth_load(char* output, size_t capacity);
 int ipad_auth_save(const char* json);
+// Removes the saved account (and any pending import / pairing marker). 1 on success.
+int ipad_auth_clear(void);
 #ifdef __cplusplus
 }
 #endif

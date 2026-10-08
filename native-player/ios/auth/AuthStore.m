@@ -79,3 +79,10 @@ int ipad_auth_save(const char* json) {
   return save([[NSString stringWithUTF8String:json] dataUsingEncoding:NSUTF8StringEncoding])?1:0;
  }
 }
+
+int ipad_auth_clear(void) {
+ OSStatus status=SecItemDelete((__bridge CFDictionaryRef)query());
+ unlink(Inbox); unlink("/var/mobile/Documents/cspot-use-connect-pairing");
+ fprintf(stderr,"AUTH: cleared saved account status=%d\n",(int)status);
+ return status==errSecSuccess || status==errSecItemNotFound;
+}
