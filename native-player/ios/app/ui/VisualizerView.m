@@ -277,7 +277,12 @@ static UIColor* hsv(CGFloat h, CGFloat s, CGFloat v, CGFloat a) { return [UIColo
     q->x += q->vx * (1 + L * 2); q->y += q->vy * (1 + L * 2); q->life -= 0.004 + L * 0.01;
     if (q->life <= 0 || q->x < -20 || q->x > w + 20 || q->y < -20 || q->y > h + 20) {
       [self resetParticle:i];
-      if ([p isEqualToString:@"Fireworks"]) { q->x = w / 2 + (arc4random_uniform(200) - 100); q->y = h * 0.7; q->vy = -(4 + arc4random_uniform(8)) * (0.5 + L); }
+      if ([p isEqualToString:@"Fireworks"]) {
+        // Launch from a few points along the bottom with a random burst direction.
+        q->x = w * (0.2 + 0.6 * (arc4random_uniform(5) / 4.0)); q->y = h * (0.75 + arc4random_uniform(20) / 100.0);
+        CGFloat angle = -M_PI_2 + (arc4random_uniform(100) - 50) / 100.0 * 1.2, speed = (3 + arc4random_uniform(9)) * (0.5 + L);
+        q->vx = cos(angle) * speed; q->vy = sin(angle) * speed; q->life = 0.6 + arc4random_uniform(40) / 100.0;
+      }
       if ([p isEqualToString:@"Cosmic Rain"]) q->y = -10;
       if ([p isEqualToString:@"Comet"]) q->x = -10;
     }
