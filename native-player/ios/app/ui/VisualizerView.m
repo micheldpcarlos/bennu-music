@@ -107,12 +107,16 @@ typedef struct { CGFloat x, y, vx, vy, life, hue; } Particle;
 @property(nonatomic, strong) CADisplayLink* link;
 @property(nonatomic) CFTimeInterval lastRandom;
 @property(nonatomic) float level, beat, phase, hueShift;
+@property(nonatomic) BOOL shuffling;
 @property(nonatomic) int frameCount;   // NOT `frame`: that would shadow UIView's frame setter and the view would never resize
 @property(nonatomic, strong) UILabel* nameLabel;
 @end
 @implementation VisualizerView
-+ (NSArray*)families { return @[@"Alchemy", @"Ambience", @"Bars and Waves", @"Battery", @"Particle", @"Plenoptic", @"Spikes"]; }
-+ (NSArray*)presetsForFamily:(NSString*)family { return catalog()[family] ?: @[]; }
+static NSString* const kShuffleAll = @"Shuffle all";
++ (NSArray*)realFamilies { return @[@"Alchemy", @"Ambience", @"Bars and Waves", @"Battery", @"Particle", @"Plenoptic", @"Spikes"]; }
++ (NSArray*)families { return [@[kShuffleAll] arrayByAddingObjectsFromArray:[self realFamilies]]; }
++ (NSArray*)presetsForFamily:(NSString*)family { return [family isEqualToString:kShuffleAll] ? @[@"Every 25 seconds"] : (catalog()[family] ?: @[]); }
++ (BOOL)isShuffleFamily:(NSString*)family { return [family isEqualToString:kShuffleAll]; }
 - (instancetype)initWithFrame:(CGRect)frame {
   if ((self = [super initWithFrame:frame])) {
     self.backgroundColor = [UIColor blackColor]; self.opaque = YES;
@@ -140,13 +144,24 @@ typedef struct { CGFloat x, y, vx, vy, life, hue; } Particle;
   }
 }
 - (void)dealloc { [self.link invalidate]; if (_canvas) CGContextRelease(_canvas); }
-- (void)startWithFamily:(NSString*)family preset:(NSString*)preset {
+// Shuffle all: every 25 s jump to a random preset of a random family; the label shows what is on.
+- (void)applyPreset:(NSString*)family preset:(NSString*)preset {
   self.family = family; self.preset = preset; self.spec = spec(family, preset);
   self.lastRandom = CACurrentMediaTime();
-  self.nameLabel.text = [NSString stringWithFormat:@"%@ — %@", family, preset];
+  self.nameLabel.text = self.shuffling ? [NSString stringWithFormat:@"Shuffle all — %@: %@", family, preset] : [NSString stringWithFormat:@"%@ — %@", family, preset];
+  if (self.link) self.link.frameInterval = self.spec.shift == ShiftNone ? 2 : 3;   // 30 fps analyzers, 20 fps feedback effects on the iPad 2
+}
+- (void)applyRandomPreset {
+  NSArray* families = [VisualizerView realFamilies];
+  NSString* family = families[arc4random_uniform((uint32_t)families.count)];
+  NSArray* presets = [VisualizerView presetsForFamily:family];
+  [self applyPreset:family preset:presets[arc4random_uniform((uint32_t)presets.count)]];
+}
+- (void)startWithFamily:(NSString*)family preset:(NSString*)preset {
   [self.link invalidate];
   self.link = [CADisplayLink displayLinkWithTarget:self selector:@selector(tick)];
-  self.link.frameInterval = self.spec.shift == ShiftNone ? 2 : 3;   // 30 fps analyzers, 20 fps feedback effects on the iPad 2
+  self.shuffling = [VisualizerView isShuffleFamily:family];
+  if (self.shuffling) [self applyRandomPreset]; else [self applyPreset:family preset:preset];
   [self.link addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
 }
 - (void)stop { [self.link invalidate]; self.link = nil; }
@@ -175,8 +190,9 @@ typedef struct { CGFloat x, y, vx, vy, life, hue; } Particle;
   self.phase += (0.02f + self.level * 0.05f) * self.spec.speed;
   if (self.spec.cycleHue) self.hueShift += 0.0015f;
   self.frameCount += 1;
-  if (([self.preset isEqualToString:@"Random"] || [self.preset isEqualToString:@"Randomization"]) && CACurrentMediaTime() - self.lastRandom > 25) {
-    self.lastRandom = CACurrentMediaTime(); self.spec = spec(self.family, self.preset);
+  if (CACurrentMediaTime() - self.lastRandom > 25) {
+    if (self.shuffling) [self applyRandomPreset];
+    else if ([self.preset isEqualToString:@"Random"] || [self.preset isEqualToString:@"Randomization"]) { self.lastRandom = CACurrentMediaTime(); self.spec = spec(self.family, self.preset); }
   }
   if (_canvas) { [self renderFrame]; CGImageRef image = CGBitmapContextCreateImage(_canvas); self.layer.contents = (__bridge id)image; CGImageRelease(image); }
 }
