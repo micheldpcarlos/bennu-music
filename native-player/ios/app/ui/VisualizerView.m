@@ -10,7 +10,7 @@
 #define BANDS 48
 #define WAVE 128
 typedef NS_ENUM(int, Shift) { ShiftNone, ShiftZoom, ShiftZoomOut, ShiftSwirl, ShiftKaleido, ShiftStarburst, ShiftTunnel, ShiftTile, ShiftTwirl, ShiftLeft, ShiftRight, ShiftUp, ShiftDown, ShiftShimmer, ShiftThingus, ShiftRotate, ShiftStretchX };
-typedef NS_ENUM(int, Element) { ElNone, ElWave, ElRadar, ElDotPlane, ElCircleWave, ElEdgeGradient, ElScribble, ElEdgeTrace, ElSpectrumEdge, ElGalaxy, ElCircles, ElBars, ElLines, ElAmoeba, ElSpikes, ElFountain, ElSmokeCircles, ElSmokeLines, ElXLines, ElTwoLines };
+typedef NS_ENUM(int, Element) { ElNone, ElWave, ElRadar, ElDotPlane, ElCircleWave, ElEdgeGradient, ElScribble, ElEdgeTrace, ElSpectrumEdge, ElGalaxy, ElCircles, ElBars, ElLines, ElAmoeba, ElSpikes, ElFountain, ElSmokeCircles, ElSmokeLines, ElXLines, ElTwoLines, ElMirrorWave };
 typedef struct { Shift shift; Element a, b; float hue; float hueRange; float sat; float fade; float speed; BOOL whiteFlash; BOOL cycleHue; } PresetSpec;
 
 static NSDictionary* catalog(void) {
@@ -75,8 +75,13 @@ static PresetSpec spec(NSString* family, NSString* preset) {
   } else if ([family isEqualToString:@"Particle"]) {
     s.shift = [preset isEqualToString:@"Rotating Particle"] ? ShiftRotate : ShiftNone; s.a = ElDotPlane; s.hue = 0.7; s.sat = 0.9; s.fade = 0.6; s.cycleHue = NO;
   } else if ([family isEqualToString:@"Bars and Waves"]) {
-    s.shift = ShiftNone; s.fade = 0; s.cycleHue = NO;
-    s.a = [preset isEqualToString:@"Scope"] ? ElWave : [preset isEqualToString:@"Ocean Mist"] ? ElSmokeLines : ElBars; s.hue = [preset isEqualToString:@"Fire Storm"] ? 0.05 : 0.33; s.sat = 0.9;
+    // Research: Bars/Scope are yellow-green on black; Ocean Mist is a soft mirrored blue-white waveform with short
+    // fading trails; Fire Storm is the spectrum rendered as flame with a rising smear.
+    s.shift = ShiftNone; s.fade = 0; s.cycleHue = NO; s.hue = 0.2; s.sat = 0.85;
+    if ([preset isEqualToString:@"Scope"]) s.a = ElWave;
+    else if ([preset isEqualToString:@"Ocean Mist"]) { s.a = ElMirrorWave; s.shift = ShiftUp; s.fade = 0.78; s.hue = 0.58; s.sat = 0.45; }
+    else if ([preset isEqualToString:@"Fire Storm"]) { s.a = ElBars; s.shift = ShiftUp; s.fade = 0.85; s.hue = 0.04; s.hueRange = 0.12; s.sat = 0.95; }
+    else s.a = ElBars;
   } else {
     // Alchemy Random, Battery Randomization, Ambience/Plenoptic Random: a fresh random recipe.
     Shift shifts[] = {ShiftZoom, ShiftSwirl, ShiftKaleido, ShiftStarburst, ShiftTunnel, ShiftTile, ShiftTwirl, ShiftShimmer, ShiftRotate, ShiftZoomOut};
@@ -102,7 +107,7 @@ typedef struct { CGFloat x, y, vx, vy, life, hue; } Particle;
 @property(nonatomic, strong) CADisplayLink* link;
 @property(nonatomic) CFTimeInterval lastRandom;
 @property(nonatomic) float level, beat, phase, hueShift;
-@property(nonatomic) int frame;
+@property(nonatomic) int frameCount;   // NOT `frame`: that would shadow UIView's frame setter and the view would never resize
 @property(nonatomic, strong) UILabel* nameLabel;
 @end
 @implementation VisualizerView
@@ -111,7 +116,8 @@ typedef struct { CGFloat x, y, vx, vy, life, hue; } Particle;
 - (instancetype)initWithFrame:(CGRect)frame {
   if ((self = [super initWithFrame:frame])) {
     self.backgroundColor = [UIColor blackColor]; self.opaque = YES;
-    self.layer.contentsGravity = kCAGravityResize; self.layer.magnificationFilter = kCAFilterLinear;
+    self.layer.contentsGravity = kCAGravityResize;   // the half-res bitmap is scaled up by the GPU
+    self.layer.magnificationFilter = kCAFilterLinear;
     self.nameLabel = [[UILabel alloc] init];
     self.nameLabel.font = [UIFont systemFontOfSize:13]; self.nameLabel.textColor = [UIColor colorWithWhite:1 alpha:0.6];
     [self addSubview:self.nameLabel];
@@ -140,7 +146,7 @@ typedef struct { CGFloat x, y, vx, vy, life, hue; } Particle;
   self.nameLabel.text = [NSString stringWithFormat:@"%@ — %@", family, preset];
   [self.link invalidate];
   self.link = [CADisplayLink displayLinkWithTarget:self selector:@selector(tick)];
-  self.link.frameInterval = 2;
+  self.link.frameInterval = self.spec.shift == ShiftNone ? 2 : 3;   // 30 fps analyzers, 20 fps feedback effects on the iPad 2
   [self.link addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
 }
 - (void)stop { [self.link invalidate]; self.link = nil; }
@@ -168,7 +174,7 @@ typedef struct { CGFloat x, y, vx, vy, life, hue; } Particle;
   self.beat = MAX(hit, self.beat * 0.85f);
   self.phase += (0.02f + self.level * 0.05f) * self.spec.speed;
   if (self.spec.cycleHue) self.hueShift += 0.0015f;
-  self.frame += 1;
+  self.frameCount += 1;
   if (([self.preset isEqualToString:@"Random"] || [self.preset isEqualToString:@"Randomization"]) && CACurrentMediaTime() - self.lastRandom > 25) {
     self.lastRandom = CACurrentMediaTime(); self.spec = spec(self.family, self.preset);
   }
@@ -253,6 +259,15 @@ static UIColor* hsv(CGFloat h, CGFloat s, CGFloat v, CGFloat a) { return [UIColo
       CGContextBeginPath(c);
       for (int i = 0; i < WAVE; i++) { CGFloat x = i * w / (WAVE - 1), y = cy + _wave[i] * h * 0.4; i ? CGContextAddLineToPoint(c, x, y) : CGContextMoveToPoint(c, x, y); }
       CGContextStrokePath(c); break; }
+    case ElMirrorWave: {
+      CGContextSetLineCap(c, kCGLineCapRound); CGContextSetLineWidth(c, 3 + L * 3);
+      for (int k = 0; k < 2; k++) {
+        CGContextSetStrokeColorWithColor(c, hsv([self hue:0], satur, 1, 0.9).CGColor);
+        CGContextBeginPath(c);
+        for (int i = 0; i < WAVE; i++) { CGFloat x = i * w / (WAVE - 1), y = cy + (k ? -1 : 1) * (h * 0.04 + fabs(_wave[i]) * h * 0.45); i ? CGContextAddLineToPoint(c, x, y) : CGContextMoveToPoint(c, x, y); }
+        CGContextStrokePath(c);
+      }
+      break; }
     case ElTwoLines: case ElXLines: {
       CGContextSetLineWidth(c, 2); 
       for (int k = 0; k < 2; k++) {
