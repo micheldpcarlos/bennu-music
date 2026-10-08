@@ -21,7 +21,7 @@ audio streaming are Premium features).
 - **Album, playlist, artist and Liked Songs pages** with Play and Shuffle; long-press a track for Play next, Go to album, Go to artist.
 - **Now Playing**: artwork, scrubber with seek, shuffle, repeat (off / all / one), queue screen, lock-screen and Control Center controls.
 - **Visualizations**: all Windows Media Player 9 built-ins (Alchemy, Ambience, Bars and Waves, Battery, Particle, Plenoptic, Spikes), reimplemented as a video-feedback engine on CoreGraphics, plus a Shuffle-all mode.
-- **Spotify Connect volume**: the phone's volume slider controls the iPad (cubic curve on the AudioQueue gain); the level is reported back and persisted across restarts.
+- **Spotify Connect volume** is the iPad's system volume: the phone's slider moves it, the hardware buttons update the phone, and the level is remembered across restarts.
 - **Account**: profile photo and name, in-app sign-out, a switch for visibility on the local network (Spotify Connect pairing).
 - **Resilience**: automatic reconnect after network loss, engine restart with backoff, per-feature circuit breakers for Spotify's internal endpoints.
 
@@ -126,7 +126,7 @@ The app registers the `phoenix://` URL scheme so it can be driven over SSH with 
 | `phoenix://screenshot` | Writes `Documents/phoenix-screen.png` |
 | `phoenix://tab?n=0..2`, `phoenix://back`, `phoenix://scroll?y=800` | Navigation |
 | `phoenix://search?q=...`, `phoenix://open?uri=spotify:album:...`, `phoenix://play?uri=...` | Browsing and playback |
-| `phoenix://nowplaying`, `phoenix://seek?ms=266000`, `phoenix://repeat?mode=1`, `phoenix://enqueue?uri=...` | Player |
+| `phoenix://nowplaying`, `phoenix://seek?ms=266000`, `phoenix://volume?v=32768`, `phoenix://repeat?mode=1`, `phoenix://enqueue?uri=...` | Player |
 | `phoenix://viz?family=Battery%26preset=brightsphere`, `phoenix://vizmenu` | Visualizer |
 | `phoenix://setup`, `phoenix://signout`, `phoenix://visible?on=0`, `phoenix://drop` | Account, visibility, simulated connection loss |
 

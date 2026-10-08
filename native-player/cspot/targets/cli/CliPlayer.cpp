@@ -29,10 +29,6 @@ CliPlayer::CliPlayer(std::unique_ptr<AudioSink> sink,
     : bell::Task("player", 1024, 0, 0) {
   this->handler = handler;
   this->audioSink = std::move(sink);
-#ifdef CSPOT_IOS_APP
-  // Start at the level the phone last set; the engine reports the same value to Spotify.
-  this->audioSink->volumeChanged(static_cast<uint16_t>(std::min<uint32_t>(ipad_player_saved_volume(), 65535)));
-#endif
 
   this->centralAudioBuffer =
       std::make_shared<bell::CentralAudioBuffer>(
@@ -124,9 +120,8 @@ CliPlayer::CliPlayer(std::unique_ptr<AudioSink> sink,
             int volume = cspot_compat::get<int>(event->data);
             if (volume < 0) volume = 0;
             if (volume > 65535) volume = 65535;
-            this->audioSink->volumeChanged(static_cast<uint16_t>(volume));
 #ifdef CSPOT_IOS_APP
-            ipad_player_volume(static_cast<uint32_t>(volume));
+            ipad_player_volume(static_cast<uint32_t>(volume));   // the app applies it as the system volume
 #endif
             break;
           }

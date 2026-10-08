@@ -378,6 +378,7 @@ int main(int argc, char** argv) {
       ipad_player::setQueueHandlers(
           [weakHandler](const std::vector<std::string>& uris) { if (auto active = weakHandler.lock()) active->queueTracks(uris); },
           [weakHandler](int mode) { if (auto active = weakHandler.lock()) active->setRepeat(mode); });
+      ipad_player::setVolumeHandler([weakHandler](uint32_t volume) { if (auto active = weakHandler.lock()) active->setRemoteVolume((int)volume); });
       {
         auto* zeroconf = zeroconfServer.get();
         zeroconf->blob = std::make_shared<cspot::LoginBlob>(kDeviceName);

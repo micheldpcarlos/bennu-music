@@ -3,6 +3,7 @@
 #import "CatalogClient.h"
 #import "ImageCache.h"
 #import <MediaPlayer/MediaPlayer.h>
+#import <AVFoundation/AVFoundation.h>
 NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
 NSString* const PhoenixTrackChanged = @"PhoenixTrackChanged";
 @interface PlayerModel ()
@@ -11,6 +12,8 @@ NSString* const PhoenixTrackChanged = @"PhoenixTrackChanged";
 @property(nonatomic, copy) NSString* contextUri;
 @property(nonatomic) BOOL shuffle;
 @property(nonatomic, strong) NSTimer* timer;
+@property(nonatomic, strong) MPVolumeView* volumeView;   // off-screen; its slider is the only public way to set the system volume
+@property(nonatomic) float appliedVolume;
 @property(nonatomic, strong) CatalogRequest* contextRequest;
 @property(nonatomic, strong) NSArray* queue;
 @property(nonatomic, copy) NSString* infoTrackId;
@@ -42,6 +45,10 @@ NSString* const PhoenixTrackChanged = @"PhoenixTrackChanged";
   [commands.nextTrackCommand addTarget:self action:@selector(remoteNext:)];
   [commands.previousTrackCommand addTarget:self action:@selector(remotePrevious:)];
   [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
+  // Spotify Connect volume == system volume: report the current level and watch the hardware buttons.
+  self.appliedVolume = AVAudioSession.sharedInstance.outputVolume;
+  ipad_player_report_volume((uint32_t)lroundf(self.appliedVolume * 65535));
+  [AVAudioSession.sharedInstance addObserver:self forKeyPath:@"outputVolume" options:NSKeyValueObservingOptionNew context:NULL];
   self.timer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(refresh) userInfo:nil repeats:YES];
   [self refresh];
 }
@@ -50,11 +57,37 @@ NSString* const PhoenixTrackChanged = @"PhoenixTrackChanged";
   ipad_player_snapshot(&snapshot);
   IPadPlayerSnapshot previous = self.snapshot;
   self.snapshot = snapshot;
+  if (snapshot.volume != previous.volume) [self applySystemVolume:snapshot.volume / 65535.0f];
   [self updateNowPlayingInfo];
   [NSNotificationCenter.defaultCenter postNotificationName:PhoenixPlayerChanged object:self];
   if (strcmp(previous.trackId, snapshot.trackId) != 0 || previous.paused != snapshot.paused || previous.state != snapshot.state ||
       previous.hasTrack != snapshot.hasTrack || previous.reconnecting != snapshot.reconnecting || previous.repeat != snapshot.repeat)
     [NSNotificationCenter.defaultCenter postNotificationName:PhoenixTrackChanged object:self];
+}
+- (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
+  if (![keyPath isEqualToString:@"outputVolume"]) return;
+  float level = [change[NSKeyValueChangeNewKey] floatValue];
+  if (fabsf(level - self.appliedVolume) < 0.02f) return;   // our own change echoing back
+  self.appliedVolume = level;
+  ipad_player_report_volume((uint32_t)lroundf(level * 65535));
+  fprintf(stderr, "VOLUME: system changed to %.2f, reported to Spotify\n", level);
+}
+- (void)applySystemVolume:(float)level {
+  float current = AVAudioSession.sharedInstance.outputVolume;
+  if (fabsf(level - current) < 0.02f) { self.appliedVolume = current; return; }
+  if (!self.volumeView) {
+    UIWindow* window = UIApplication.sharedApplication.keyWindow; if (!window) return;
+    self.volumeView = [[MPVolumeView alloc] initWithFrame:CGRectMake(-2000, -2000, 120, 40)];
+    self.volumeView.showsRouteButton = NO;
+    [window addSubview:self.volumeView];
+  }
+  UISlider* slider = nil;
+  for (UIView* view in self.volumeView.subviews) if ([view isKindOfClass:UISlider.class]) { slider = (UISlider*)view; break; }
+  if (!slider) return;
+  self.appliedVolume = level;
+  [slider setValue:level animated:NO];
+  [slider sendActionsForControlEvents:UIControlEventTouchUpInside];
+  fprintf(stderr, "VOLUME: phone set %.2f (system was %.2f)\n", level, current);
 }
 - (MPRemoteCommandHandlerStatus)remotePlay:(MPRemoteCommandEvent*)event { if (self.snapshot.paused) [self togglePause]; return MPRemoteCommandHandlerStatusSuccess; }
 - (MPRemoteCommandHandlerStatus)remotePause:(MPRemoteCommandEvent*)event { if (!self.snapshot.paused) [self togglePause]; return MPRemoteCommandHandlerStatusSuccess; }

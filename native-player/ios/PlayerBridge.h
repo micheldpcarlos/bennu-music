@@ -10,6 +10,7 @@ typedef struct IPadPlayerSnapshot {
   int state, hasTrack, paused, loading, pending;
   int reconnecting, repeat;   // repeat: 0 off, 1 all, 2 one
   uint32_t positionMs, durationMs;
+  uint32_t volume;            // Spotify Connect volume 0..65535 = the iPad's system volume
   char title[256], artist[256], album[256], artwork[512], trackId[128], error[256];
 } IPadPlayerSnapshot;
 
@@ -43,9 +44,12 @@ int ipad_engine_stop_requested(void);
 void ipad_engine_stop_clear(void);
 // Network visibility: whether the iPad advertises itself for Spotify Connect pairing on the LAN.
 int ipad_engine_discoverable(void);
-// Spotify Connect volume (0..65535) persisted across restarts so the phone shows the real level.
+// Spotify Connect volume (0..65535) mirrors the iPad's system volume. The engine calls
+// ipad_player_volume when the phone moves the slider (the UI then sets the system volume);
+// the UI calls ipad_player_report_volume when the system volume changes (the engine tells the phone).
 uint32_t ipad_player_saved_volume(void);
 void ipad_player_volume(uint32_t volume);
+void ipad_player_report_volume(uint32_t volume);
 void ipad_engine_set_discoverable(int on);
 
 // --- Engine -> bridge notifications ---
@@ -71,6 +75,7 @@ void setControlHandler(std::function<bool(int)> handler);
 void setPlaybackHandlers(std::function<bool(const std::vector<std::string>&, size_t, const std::string&)> play,
                          std::function<void(uint32_t)> seek);
 void setQueueHandlers(std::function<void(const std::vector<std::string>&)> enqueue, std::function<void(int)> repeat);
+void setVolumeHandler(std::function<void(uint32_t)> handler);
 void setDropHandler(std::function<void()> handler);
 // Catalog service: (kind, argument, publish(json, done)). Invoked on a worker thread per request.
 using CatalogPublish = std::function<void(const std::string&, bool)>;

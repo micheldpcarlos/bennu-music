@@ -94,23 +94,9 @@ bool IOSAudioQueueSink::setParams(uint32_t rate, uint8_t channels, uint8_t bits)
     std::lock_guard<std::mutex> lock(mutex);
     stopped = false;
   }
-  applyVolume();
   ipad_metrics::startReporter();
   std::puts("iPad AudioQueue ready: 44100 Hz, stereo, 16-bit PCM");
   return true;
-}
-void IOSAudioQueueSink::volumeChanged(uint16_t level) {
-  volume = level;
-  applyVolume();
-}
-void IOSAudioQueueSink::applyVolume() {
-  if (!queue) return;
-  // Cubic curve, like librespot's default: the phone's slider at 50% is about -18 dB,
-  // which matches how other Connect receivers feel. The hardware buttons still scale on top.
-  float v = volume / 65535.0f;
-  float gain = v * v * v;
-  ok(AudioQueueSetParameter(queue, kAudioQueueParam_Volume, gain), "AudioQueueSetParameter volume");
-  std::fprintf(stderr, "AUDIO: volume=%u gain=%.3f\n", (unsigned)volume, gain);
 }
 
 void IOSAudioQueueSink::consumed(void* context, AudioQueueRef, AudioQueueBufferRef buffer) {

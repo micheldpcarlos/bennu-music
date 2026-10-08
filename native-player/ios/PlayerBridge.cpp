@@ -30,6 +30,7 @@ std::function<void()> dropHandler;
 std::function<void(const std::vector<std::string>&)> enqueueTracks;
 std::function<void(int)> setRepeatMode;
 std::vector<std::string> pendingQueue; int pendingRepeat = -1;
+std::function<void(uint32_t)> setRemoteVolume; long pendingVolume = -1; bool volumeKnown = false;
 std::vector<std::string> queueUris; size_t queueIndex = 0; std::string queueContext;
 std::function<void(bool)> discoverableHandler;
 const char* kHiddenMarker = "/var/mobile/Documents/phoenix-hidden";
@@ -63,7 +64,7 @@ template <size_t N> void copyText(char (&output)[N], const char* input) {
 void resetHandlersLocked() {
   commands.clear(); control = nullptr; playTracks = nullptr; seekTrack = nullptr;
   pendingPlay = PendingPlay{}; pendingSeek = false; pendingQueue.clear(); pendingRepeat = -1;
-  enqueueTracks = nullptr; setRepeatMode = nullptr; dropHandler = nullptr;
+  enqueueTracks = nullptr; setRepeatMode = nullptr; dropHandler = nullptr; setRemoteVolume = nullptr; pendingVolume = -1;
 }
 bool validTrack(const std::string& uri) {
   return uri.size() == 36 && uri.compare(0, 14, "spotify:track:") == 0 &&
@@ -279,6 +280,7 @@ uint64_t ipad_player_queue(char* output, uint32_t capacity) {
 
 static const char* kVolumeFile = "/var/mobile/Documents/phoenix-volume";
 uint32_t ipad_player_saved_volume() {
+  { std::lock_guard<std::mutex> lock(bridgeMutex); if (volumeKnown) return state.volume; }
   FILE* f = std::fopen(kVolumeFile, "r");
   if (!f) return 65535;
   unsigned value = 65535;
@@ -286,15 +288,26 @@ uint32_t ipad_player_saved_volume() {
   std::fclose(f);
   return value > 65535 ? 65535 : value;
 }
-void ipad_player_volume(uint32_t volume) {
+static void persistVolume(uint32_t volume) {
   FILE* f = std::fopen(kVolumeFile, "w");
   if (!f) return;
-  std::fprintf(f, "%u\n", (unsigned)(volume > 65535 ? 65535 : volume));
+  std::fprintf(f, "%u\n", (unsigned)volume);
   std::fclose(f);
+}
+void ipad_player_volume(uint32_t volume) {   // from the engine: the phone moved the slider
+  if (volume > 65535) volume = 65535;
+  { std::lock_guard<std::mutex> lock(bridgeMutex); state.volume = volume; volumeKnown = true; }
+  persistVolume(volume);
+}
+void ipad_player_report_volume(uint32_t volume) {   // from the UI: the system volume changed
+  if (volume > 65535) volume = 65535;
+  { std::lock_guard<std::mutex> lock(bridgeMutex); state.volume = volume; volumeKnown = true; pendingVolume = volume; }
+  persistVolume(volume);
 }
 void ipad_player_waiting() {
   std::lock_guard<std::mutex> lock(bridgeMutex);
-  state = {}; state.paused = 1; resetHandlersLocked(); catalogService = nullptr; stopHandler = nullptr;
+  uint32_t volume = state.volume;   // the system volume outlives engine restarts
+  state = {}; state.paused = 1; state.volume = volume; resetHandlersLocked(); catalogService = nullptr; stopHandler = nullptr;
   positionAt = Clock::now();
 }
 void ipad_player_connecting() {
@@ -366,6 +379,10 @@ void setQueueHandlers(std::function<void(const std::vector<std::string>&)> enque
   std::lock_guard<std::mutex> lock(bridgeMutex);
   enqueueTracks = std::move(enqueue); setRepeatMode = std::move(repeat);
 }
+void setVolumeHandler(std::function<void(uint32_t)> handler) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  setRemoteVolume = std::move(handler);
+}
 void setDropHandler(std::function<void()> handler) {
   std::lock_guard<std::mutex> lock(bridgeMutex);
   dropHandler = std::move(handler);
@@ -424,6 +441,9 @@ void dispatchPending() {
     } catch (...) { std::fprintf(stderr, "UI: add to queue failed\n"); }
   }
   if (repeatMode >= 0 && repeatHandler) { try { repeatHandler(repeatMode); } catch (...) {} }
+  long volumeToSend = -1; std::function<void(uint32_t)> volumeHandler;
+  { std::lock_guard<std::mutex> lock(bridgeMutex); volumeToSend = pendingVolume; pendingVolume = -1; volumeHandler = setRemoteVolume; }
+  if (volumeToSend >= 0 && volumeHandler) { try { volumeHandler((uint32_t)volumeToSend); } catch (...) {} }
   for (;;) {
     int command;
     std::function<bool(int)> handler;
