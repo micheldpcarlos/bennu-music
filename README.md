@@ -21,6 +21,7 @@ audio streaming are Premium features).
 - **Album, playlist, artist and Liked Songs pages** with Play and Shuffle; long-press a track for Play next, Go to album, Go to artist.
 - **Now Playing**: artwork, scrubber with seek, shuffle, repeat (off / all / one), queue screen, lock-screen and Control Center controls.
 - **Visualizations**: all Windows Media Player 9 built-ins (Alchemy, Ambience, Bars and Waves, Battery, Particle, Plenoptic, Spikes), reimplemented as a video-feedback engine on CoreGraphics, plus a Shuffle-all mode.
+- **Spotify Connect volume**: the phone's volume slider controls the iPad (cubic curve on the AudioQueue gain); the level is reported back and persisted across restarts.
 - **Account**: profile photo and name, in-app sign-out, a switch for visibility on the local network (Spotify Connect pairing).
 - **Resilience**: automatic reconnect after network loss, engine restart with backoff, per-feature circuit breakers for Spotify's internal endpoints.
 

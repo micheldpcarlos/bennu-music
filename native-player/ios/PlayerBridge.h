@@ -43,6 +43,9 @@ int ipad_engine_stop_requested(void);
 void ipad_engine_stop_clear(void);
 // Network visibility: whether the iPad advertises itself for Spotify Connect pairing on the LAN.
 int ipad_engine_discoverable(void);
+// Spotify Connect volume (0..65535) persisted across restarts so the phone shows the real level.
+uint32_t ipad_player_saved_volume(void);
+void ipad_player_volume(uint32_t volume);
 void ipad_engine_set_discoverable(int on);
 
 // --- Engine -> bridge notifications ---

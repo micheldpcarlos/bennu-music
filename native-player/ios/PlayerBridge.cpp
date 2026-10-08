@@ -277,6 +277,21 @@ uint64_t ipad_player_queue(char* output, uint32_t capacity) {
   return queueRevision;
 }
 
+static const char* kVolumeFile = "/var/mobile/Documents/phoenix-volume";
+uint32_t ipad_player_saved_volume() {
+  FILE* f = std::fopen(kVolumeFile, "r");
+  if (!f) return 65535;
+  unsigned value = 65535;
+  if (std::fscanf(f, "%u", &value) != 1) value = 65535;
+  std::fclose(f);
+  return value > 65535 ? 65535 : value;
+}
+void ipad_player_volume(uint32_t volume) {
+  FILE* f = std::fopen(kVolumeFile, "w");
+  if (!f) return;
+  std::fprintf(f, "%u\n", (unsigned)(volume > 65535 ? 65535 : volume));
+  std::fclose(f);
+}
 void ipad_player_waiting() {
   std::lock_guard<std::mutex> lock(bridgeMutex);
   state = {}; state.paused = 1; resetHandlersLocked(); catalogService = nullptr; stopHandler = nullptr;

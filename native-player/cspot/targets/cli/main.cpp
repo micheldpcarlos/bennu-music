@@ -281,6 +281,9 @@ int main(int argc, char** argv) {
       // Failed pre-login sessions are discarded before retrying.
       ctx = cspot::Context::createFromBlob(loginBlob);
       if (args->setBitrate) ctx->config.audioFormat = args->bitrate;
+#ifdef CSPOT_IOS_APP
+      ctx->config.volume = static_cast<int>(ipad_player_saved_volume());   // reported in the device state; default was 0
+#endif
       try {
         ctx->session->connectWithRandomAp();
         break;
