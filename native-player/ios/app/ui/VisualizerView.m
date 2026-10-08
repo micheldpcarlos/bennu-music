@@ -144,7 +144,7 @@ static NSString* const kShuffleAll = @"Shuffle all";
     CGContextSetInterpolationQuality(_canvas, kCGInterpolationLow);
   }
 }
-- (void)dealloc { [self.link invalidate]; if (_canvas) CGContextRelease(_canvas); }
+- (void)dealloc { [self stop]; if (_canvas) CGContextRelease(_canvas); }
 // Shuffle all: every 15/30/60 s jump to a random preset of a random family; the label shows what is on.
 - (void)applyPreset:(NSString*)family preset:(NSString*)preset {
   self.family = family; self.preset = preset; self.spec = spec(family, preset);
@@ -165,8 +165,13 @@ static NSString* const kShuffleAll = @"Shuffle all";
   self.shuffleInterval = [preset isEqualToString:@"Every 15 seconds"] ? 15 : [preset isEqualToString:@"Every minute"] ? 60 : 30;
   if (self.shuffling) [self applyRandomPreset]; else [self applyPreset:family preset:preset];
   [self.link addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
+  // Keep the screen on only while a visualization is running; everywhere else auto-lock stays normal.
+  UIApplication.sharedApplication.idleTimerDisabled = YES;
 }
-- (void)stop { [self.link invalidate]; self.link = nil; }
+- (void)stop {
+  [self.link invalidate]; self.link = nil;
+  UIApplication.sharedApplication.idleTimerDisabled = NO;
+}
 - (void)touchesBegan:(NSSet*)touches withEvent:(UIEvent*)event { if (self.onTouch) self.onTouch(); }
 - (void)resetParticle:(int)i {
   _particles[i].x = arc4random_uniform(1000) / 1000.0; _particles[i].y = arc4random_uniform(1000) / 1000.0;
