@@ -265,22 +265,24 @@ size_t Catalog::hydrateBatch(const std::vector<std::string>& uris) {
   size_t stored = 0;
   for (size_t start = 0; start < uris.size(); start += 50) {
     std::vector<std::string> chunk(uris.begin() + start, uris.begin() + std::min(uris.size(), start + 50));
-    // BatchedEntityRequest { header=1 { country=1, catalogue=2 }, entity_request=2 [ { entity_uri=1, query=2 [ { extension_kind=1 (TRACK_V4=1) } ] } ] }
+    // BatchedEntityRequest { header=1 { country=1, catalogue=2 }, entity_request=2 [ { entity_uri=1, query=2 [ { extension_kind=1 } ] } ] }
+    // ExtensionKind TRACK_V4 = 10 (1 is CANVAZ).
     std::string body = proto::lengthDelimited(1, proto::lengthDelimited(1, "BR") + proto::lengthDelimited(2, "premium"));
-    for (const auto& uri : chunk) body += proto::lengthDelimited(2, proto::lengthDelimited(1, uri) + proto::lengthDelimited(2, proto::varintField(1, 1)));
+    for (const auto& uri : chunk) body += proto::lengthDelimited(2, proto::lengthDelimited(1, uri) + proto::lengthDelimited(2, proto::varintField(1, 10)));
     SpclientClient::Response response;
     try { response = client->post("/extended-metadata/v0/extended-metadata", body, "application/x-protobuf", "application/x-protobuf"); }
     catch (...) { std::fprintf(stderr, "CATALOG: batch metadata request failed\n"); return stored; }
     if (response.status != 200) { std::fprintf(stderr, "CATALOG: batch metadata HTTP=%d\n", response.status); return stored; }
-    // BatchedExtensionResponse { extended_metadata=1 [ { extension_kind=1, extension_data=2 [ { entity_uri=1, header=2, extension_data=3 Any{type_url=1, value=2} } ] } ] }
+    // Observed on the wire: BatchedExtensionResponse { extended_metadata=2 [ { header=1, extension_kind=2,
+    //   extension_data=3 [ { header=1, entity_uri=2, extension_data=3 Any{type_url=1, value=2} } ] } ] }
     size_t before = stored;
     proto::each(response.body, [&](const proto::Field& top) {
-      if (top.number != 1) return;
+      if (top.number != 2) return;
       proto::each(top.bytes, [&](const proto::Field& arr) {
-        if (arr.number != 2) return;
+        if (arr.number != 3) return;
         std::string uri, payload;
         proto::each(arr.bytes, [&](const proto::Field& e) {
-          if (e.number == 1) uri = e.bytes;
+          if (e.number == 2) uri = e.bytes;
           else if (e.number == 3) proto::each(e.bytes, [&](const proto::Field& any) { if (any.number == 2) payload = any.bytes; });
         });
         if (uri.size() != 36 || uri.compare(0, 14, "spotify:track:") != 0 || payload.empty()) return;
