@@ -30,6 +30,7 @@
   self.table.tableHeaderView = self.header;
   [self rebuild];
   [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
+  [self playerChanged];   // the view may be created after the engine is already Ready; the notification only fires on changes
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
 - (void)viewDidLayoutSubviews {

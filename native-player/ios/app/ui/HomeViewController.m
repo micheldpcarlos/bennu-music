@@ -41,6 +41,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
   for (UIView* view in @[self.greeting, self.accountButton, self.status]) [self.header addSubview:view];
   self.table.tableHeaderView = self.header;
   [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:PhoenixTrackChanged object:nil];
+  [self playerChanged];   // the view may be created after the engine is already Ready; the notification only fires on changes
   [self renderGreeting];
 }
 - (void)dealloc { [NSNotificationCenter.defaultCenter removeObserver:self]; }
