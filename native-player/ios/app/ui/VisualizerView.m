@@ -108,6 +108,7 @@ typedef struct { CGFloat x, y, vx, vy, life, hue; } Particle;
 @property(nonatomic) CFTimeInterval lastRandom;
 @property(nonatomic) float level, beat, phase, hueShift;
 @property(nonatomic) BOOL shuffling;
+@property(nonatomic) CFTimeInterval shuffleInterval;
 @property(nonatomic) int frameCount;   // NOT `frame`: that would shadow UIView's frame setter and the view would never resize
 @property(nonatomic, strong) UILabel* nameLabel;
 @end
@@ -115,7 +116,7 @@ typedef struct { CGFloat x, y, vx, vy, life, hue; } Particle;
 static NSString* const kShuffleAll = @"Shuffle all";
 + (NSArray*)realFamilies { return @[@"Alchemy", @"Ambience", @"Bars and Waves", @"Battery", @"Particle", @"Plenoptic", @"Spikes"]; }
 + (NSArray*)families { return [@[kShuffleAll] arrayByAddingObjectsFromArray:[self realFamilies]]; }
-+ (NSArray*)presetsForFamily:(NSString*)family { return [family isEqualToString:kShuffleAll] ? @[@"Every 25 seconds"] : (catalog()[family] ?: @[]); }
++ (NSArray*)presetsForFamily:(NSString*)family { return [family isEqualToString:kShuffleAll] ? @[@"Every 15 seconds", @"Every 30 seconds", @"Every minute"] : (catalog()[family] ?: @[]); }
 + (BOOL)isShuffleFamily:(NSString*)family { return [family isEqualToString:kShuffleAll]; }
 - (instancetype)initWithFrame:(CGRect)frame {
   if ((self = [super initWithFrame:frame])) {
@@ -144,7 +145,7 @@ static NSString* const kShuffleAll = @"Shuffle all";
   }
 }
 - (void)dealloc { [self.link invalidate]; if (_canvas) CGContextRelease(_canvas); }
-// Shuffle all: every 25 s jump to a random preset of a random family; the label shows what is on.
+// Shuffle all: every 15/30/60 s jump to a random preset of a random family; the label shows what is on.
 - (void)applyPreset:(NSString*)family preset:(NSString*)preset {
   self.family = family; self.preset = preset; self.spec = spec(family, preset);
   self.lastRandom = CACurrentMediaTime();
@@ -161,6 +162,7 @@ static NSString* const kShuffleAll = @"Shuffle all";
   [self.link invalidate];
   self.link = [CADisplayLink displayLinkWithTarget:self selector:@selector(tick)];
   self.shuffling = [VisualizerView isShuffleFamily:family];
+  self.shuffleInterval = [preset isEqualToString:@"Every 15 seconds"] ? 15 : [preset isEqualToString:@"Every minute"] ? 60 : 30;
   if (self.shuffling) [self applyRandomPreset]; else [self applyPreset:family preset:preset];
   [self.link addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
 }
@@ -190,9 +192,10 @@ static NSString* const kShuffleAll = @"Shuffle all";
   self.phase += (0.02f + self.level * 0.05f) * self.spec.speed;
   if (self.spec.cycleHue) self.hueShift += 0.0015f;
   self.frameCount += 1;
-  if (CACurrentMediaTime() - self.lastRandom > 25) {
-    if (self.shuffling) [self applyRandomPreset];
-    else if ([self.preset isEqualToString:@"Random"] || [self.preset isEqualToString:@"Randomization"]) { self.lastRandom = CACurrentMediaTime(); self.spec = spec(self.family, self.preset); }
+  CFTimeInterval sinceRandom = CACurrentMediaTime() - self.lastRandom;
+  if (self.shuffling) { if (sinceRandom > self.shuffleInterval) [self applyRandomPreset]; }
+  else if (sinceRandom > 25) {
+    if ([self.preset isEqualToString:@"Random"] || [self.preset isEqualToString:@"Randomization"]) { self.lastRandom = CACurrentMediaTime(); self.spec = spec(self.family, self.preset); }
   }
   if (_canvas) { [self renderFrame]; CGImageRef image = CGBitmapContextCreateImage(_canvas); self.layer.contents = (__bridge id)image; CGImageRelease(image); }
 }

@@ -62,19 +62,12 @@
   UIView* highlight = [[UIView alloc] init]; highlight.backgroundColor = [PhoenixTheme cardHighlight]; cell.selectedBackgroundView = highlight;
   cell.textLabel.text = name; cell.textLabel.font = isFamily ? [PhoenixTheme bold:15] : [PhoenixTheme regular:15];
   cell.textLabel.textColor = selected ? [PhoenixTheme green] : [PhoenixTheme text];
-  BOOL shuffle = [VisualizerView isShuffleFamily:name];
-  cell.accessoryType = isFamily && !shuffle ? UITableViewCellAccessoryDisclosureIndicator : (selected ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone);
+  cell.accessoryType = isFamily ? UITableViewCellAccessoryDisclosureIndicator : (selected ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone);
   cell.tintColor = [PhoenixTheme green];
   return cell;
 }
 - (void)tableView:(UITableView*)table didSelectRowAtIndexPath:(NSIndexPath*)path {
-  if (table == self.familyTable) {
-    self.family = self.families[path.row]; [self.familyTable reloadData]; [self.presetTable reloadData];
-    if (![VisualizerView isShuffleFamily:self.family]) return;
-    // Shuffle all has no presets to choose: one tap starts it.
-    if (self.onPick) self.onPick(self.family, [VisualizerView presetsForFamily:self.family].firstObject);
-    [self dismiss]; return;
-  }
+  if (table == self.familyTable) { self.family = self.families[path.row]; [self.familyTable reloadData]; [self.presetTable reloadData]; return; }
   [table deselectRowAtIndexPath:path animated:NO];
   NSString* preset = [VisualizerView presetsForFamily:self.family][path.row];
   if (self.onPick) self.onPick(self.family, preset);
