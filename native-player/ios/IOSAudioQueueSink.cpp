@@ -4,6 +4,7 @@ void ipadAppDeactivateAudioSession();
 #endif
 #include "PlaybackMetrics.h"
 #include "IOSAudioQueueSink.h"
+#include "AudioTap.h"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -128,6 +129,7 @@ void IOSAudioQueueSink::feedPCMFrames(const uint8_t* data, size_t bytes) {
     AudioQueueBufferRef buffer = buffers[slot];
     UInt32 count = static_cast<UInt32>(std::min(bytes, static_cast<size_t>(BufferBytes)));
     std::memcpy(buffer->mAudioData, data, count);
+  ipad_audio_tap_write(reinterpret_cast<const int16_t*>(data), count / 4);
     buffer->mAudioDataByteSize = count;
     if (!ok(AudioQueueEnqueueBuffer(queue, buffer, 0, nullptr), "AudioQueueEnqueueBuffer")) {
       close(); throw std::runtime_error("Cannot enqueue audio");

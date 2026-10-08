@@ -110,6 +110,9 @@ static NSCache* drawnImages(void) {
   } else if ([name isEqualToString:@"close"]) {
     [path moveToPoint:CGPointMake(s * 0.24, s * 0.24)]; [path addLineToPoint:CGPointMake(s * 0.76, s * 0.76)];
     [path moveToPoint:CGPointMake(s * 0.76, s * 0.24)]; [path addLineToPoint:CGPointMake(s * 0.24, s * 0.76)]; [path stroke];
+  } else if ([name isEqualToString:@"visualizer"]) {
+    CGFloat bars[] = {0.35, 0.7, 0.5, 0.85, 0.3};
+    for (int i = 0; i < 5; i++) [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(s * (0.12 + i * 0.16), s * (0.88 - bars[i] * 0.72), s * 0.1, s * bars[i] * 0.72) cornerRadius:s * 0.03] fill];
   } else if ([name isEqualToString:@"account"]) {
     [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(s * 0.32, s * 0.14, s * 0.36, s * 0.36)] fill];
     [path moveToPoint:CGPointMake(s * 0.14, s * 0.88)];

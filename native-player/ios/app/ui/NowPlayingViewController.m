@@ -4,6 +4,7 @@
 #import "PlayerModel.h"
 #import "ImageCache.h"
 #import "QueueViewController.h"
+#import "VisualizerView.h"
 @interface NowPlayingViewController ()
 @property(nonatomic, strong) UIButton* closeButton;
 @property(nonatomic, strong) UILabel* contextLabel;
@@ -21,6 +22,8 @@
 @property(nonatomic, strong) UIButton* repeatButton;
 @property(nonatomic, strong) UILabel* status;
 @property(nonatomic, strong) UIButton* queueButton;
+@property(nonatomic, strong) UIButton* vizButton;
+@property(nonatomic, strong) VisualizerView* visualizer;
 @property(nonatomic) BOOL scrubbing;
 @end
 @implementation NowPlayingViewController
@@ -76,6 +79,8 @@
   self.repeatButton = [self iconButton:@"repeat" size:26 action:@selector(repeatTapped)];
   self.repeatButton.alpha = 0.35;
   self.queueButton = [self iconButton:@"library" size:24 action:@selector(openQueue)];
+  self.vizButton = [self iconButton:@"visualizer" size:26 action:@selector(chooseVisualization)];
+  self.vizButton.accessibilityLabel = @"Visualizations";
   self.queueButton.accessibilityLabel = @"Queue";
   self.status = [self label:[PhoenixTheme regular:13] color:[PhoenixTheme subtext]];
   self.status.numberOfLines = 2;
@@ -93,6 +98,8 @@
   CGFloat width = self.view.bounds.size.width, height = self.view.bounds.size.height;
   BOOL landscape = width > height;
   self.closeButton.frame = CGRectMake(16, 24, 44, 44);
+  self.vizButton.frame = CGRectMake(width - 60, 24, 44, 44);
+  self.visualizer.frame = self.view.bounds;
   self.contextLabel.frame = CGRectMake(80, 28, width - 160, 16);
   self.contextName.frame = CGRectMake(80, 46, width - 160, 20);
   CGFloat art = landscape ? MIN(height - 160, width * 0.42) : MIN(width - 160, height * 0.46);
@@ -154,6 +161,40 @@
 - (void)previous { [[PlayerModel shared] previous]; }
 - (void)shuffle { [[PlayerModel shared] toggleShuffle]; }
 - (void)repeatTapped { [[PlayerModel shared] cycleRepeat]; }
+// Visualization menu: family first, then its presets (Windows Media Player 9 collections).
+- (void)chooseVisualization {
+  UIAlertController* menu = [UIAlertController alertControllerWithTitle:@"Visualizations" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+  for (NSString* family in [VisualizerView families])
+    [menu addAction:[UIAlertAction actionWithTitle:family style:UIAlertActionStyleDefault handler:^(UIAlertAction* action) { [self choosePresetIn:family]; }]];
+  [menu addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+  menu.popoverPresentationController.sourceView = self.vizButton; menu.popoverPresentationController.sourceRect = self.vizButton.bounds;
+  [self presentViewController:menu animated:YES completion:nil];
+}
+- (void)choosePresetIn:(NSString*)family {
+  UIAlertController* menu = [UIAlertController alertControllerWithTitle:family message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+  for (NSString* preset in [VisualizerView presetsForFamily:family])
+    [menu addAction:[UIAlertAction actionWithTitle:preset style:UIAlertActionStyleDefault handler:^(UIAlertAction* action) { [self showVisualization:family preset:preset]; }]];
+  [menu addAction:[UIAlertAction actionWithTitle:@"Back" style:UIAlertActionStyleCancel handler:^(UIAlertAction* action) { [self chooseVisualization]; }]];
+  menu.popoverPresentationController.sourceView = self.vizButton; menu.popoverPresentationController.sourceRect = self.vizButton.bounds;
+  [self presentViewController:menu animated:YES completion:nil];
+}
+- (void)showVisualization:(NSString*)family preset:(NSString*)preset {
+  [NSUserDefaults.standardUserDefaults setObject:@[family, preset] forKey:@"PhoenixVisualization"];
+  if (!self.visualizer) {
+    self.visualizer = [[VisualizerView alloc] initWithFrame:self.view.bounds];
+    __weak NowPlayingViewController* weakSelf = self;
+    self.visualizer.onTouch = ^{ [weakSelf hideVisualization]; };   // any touch closes it
+  }
+  self.visualizer.alpha = 0;
+  [self.view addSubview:self.visualizer];
+  [self.visualizer startWithFamily:family preset:preset];
+  [UIView animateWithDuration:0.3 animations:^{ self.visualizer.alpha = 1; }];
+}
+- (void)hideVisualization {
+  VisualizerView* view = self.visualizer;
+  [UIView animateWithDuration:0.25 animations:^{ view.alpha = 0; } completion:^(BOOL finished) { [view stop]; [view removeFromSuperview]; }];
+}
+- (void)viewWillDisappear:(BOOL)animated { [super viewWillDisappear:animated]; [self.visualizer stop]; }
 - (void)openQueue {
   QueueViewController* queue = [[QueueViewController alloc] init];
   queue.modalPresentationStyle = UIModalPresentationFullScreen;

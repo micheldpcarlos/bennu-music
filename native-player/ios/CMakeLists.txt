@@ -46,9 +46,9 @@ add_executable(cspot-ipad
     "${CSPOT_DIR}/targets/cli/main.cpp"
     "${CSPOT_DIR}/targets/cli/CliPlayer.cpp"
     "${CSPOT_DIR}/targets/cli/CommandLineArguments.cpp"
-    IOSAudioQueueSink.cpp)
+    IOSAudioQueueSink.cpp AudioTap.cpp)
 target_include_directories(cspot-ipad PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CSPOT_DIR}/targets/cli")
 target_compile_definitions(cspot-ipad PRIVATE CSPOT_ENABLE_IOS_SINK=1)
-target_link_libraries(cspot-ipad PRIVATE cspot "-framework AudioToolbox" "-framework CoreFoundation" "${CMAKE_OSX_SYSROOT}/usr/lib/system/libsystem_dnssd.tbd")
+target_link_libraries(cspot-ipad PRIVATE cspot "-framework Accelerate" "-framework AudioToolbox" "-framework CoreFoundation" "${CMAKE_OSX_SYSROOT}/usr/lib/system/libsystem_dnssd.tbd")
 set_target_properties(cspot-ipad PROPERTIES MACOSX_BUNDLE FALSE)
 include("${CMAKE_CURRENT_SOURCE_DIR}/app/application.cmake")
