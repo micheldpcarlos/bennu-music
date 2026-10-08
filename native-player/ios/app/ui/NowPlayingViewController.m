@@ -3,6 +3,7 @@
 #import "PhoenixTheme.h"
 #import "PlayerModel.h"
 #import "ImageCache.h"
+#import "QueueViewController.h"
 @interface NowPlayingViewController ()
 @property(nonatomic, strong) UIButton* closeButton;
 @property(nonatomic, strong) UILabel* contextLabel;
@@ -19,6 +20,7 @@
 @property(nonatomic, strong) UIButton* nextButton;
 @property(nonatomic, strong) UIButton* repeatButton;
 @property(nonatomic, strong) UILabel* status;
+@property(nonatomic, strong) UIButton* queueButton;
 @property(nonatomic) BOOL scrubbing;
 @end
 @implementation NowPlayingViewController
@@ -73,6 +75,8 @@
   self.nextButton = [self iconButton:@"next" size:36 action:@selector(next)];
   self.repeatButton = [self iconButton:@"repeat" size:26 action:@selector(repeatTapped)];
   self.repeatButton.alpha = 0.35;
+  self.queueButton = [self iconButton:@"library" size:24 action:@selector(openQueue)];
+  self.queueButton.accessibilityLabel = @"Queue";
   self.status = [self label:[PhoenixTheme regular:13] color:[PhoenixTheme subtext]];
   self.status.numberOfLines = 2;
   [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(render) name:PhoenixPlayerChanged object:nil];
@@ -109,7 +113,8 @@
   self.nextButton.frame = CGRectMake(center + 36 + 24, controlsY + 8, 56, 56);
   self.shuffleButton.frame = CGRectMake(x, controlsY + 12, 48, 48);
   self.repeatButton.frame = CGRectMake(x + contentWidth - 48, controlsY + 12, 48, 48);
-  self.status.frame = CGRectMake(x, controlsY + 96, contentWidth, 40);
+  self.status.frame = CGRectMake(x, controlsY + 96, contentWidth - 60, 40);
+  self.queueButton.frame = CGRectMake(x + contentWidth - 48, controlsY + 92, 48, 48);
 }
 - (void)render {
   PlayerModel* model = [PlayerModel shared];
@@ -131,7 +136,11 @@
     self.elapsed.text = PhoenixDuration(hasTrack ? snapshot.positionMs : 0);
     self.remaining.text = [@"-" stringByAppendingString:PhoenixDuration(hasTrack && snapshot.durationMs > snapshot.positionMs ? snapshot.durationMs - snapshot.positionMs : 0)];
   }
+  int repeat = snapshot.repeat;
+  self.repeatButton.alpha = repeat ? 1 : 0.35;
+  [self.repeatButton setImage:[PhoenixTheme icon:repeat == 2 ? @"repeatOne" : @"repeat" size:26 color:repeat ? [PhoenixTheme green] : [PhoenixTheme text]] forState:UIControlStateNormal];
   if (snapshot.state == IPadFailed) self.status.text = @(snapshot.error);
+  else if (snapshot.reconnecting) self.status.text = @"Reconnecting to Spotify…";
   else if (snapshot.state != IPadReady) self.status.text = @"Connecting to Spotify…";
   else if (snapshot.loading) self.status.text = @"Loading…";
   else self.status.text = @"";
@@ -144,5 +153,10 @@
 - (void)next { [[PlayerModel shared] next]; }
 - (void)previous { [[PlayerModel shared] previous]; }
 - (void)shuffle { [[PlayerModel shared] toggleShuffle]; }
-- (void)repeatTapped { /* repeat is not implemented by the engine yet */ }
+- (void)repeatTapped { [[PlayerModel shared] cycleRepeat]; }
+- (void)openQueue {
+  QueueViewController* queue = [[QueueViewController alloc] init];
+  queue.modalPresentationStyle = UIModalPresentationFullScreen;
+  [self presentViewController:queue animated:YES completion:nil];
+}
 @end

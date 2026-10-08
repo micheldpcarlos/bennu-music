@@ -63,6 +63,15 @@ NSString* PhoenixDuration(uint32_t milliseconds) {
     [path moveToPoint:CGPointMake(s * 0.76, s * 0.22)]; [path addLineToPoint:CGPointMake(s * 0.86, s * 0.3)]; [path addLineToPoint:CGPointMake(s * 0.76, s * 0.38)];
     [path moveToPoint:CGPointMake(s * 0.76, s * 0.62)]; [path addLineToPoint:CGPointMake(s * 0.86, s * 0.7)]; [path addLineToPoint:CGPointMake(s * 0.76, s * 0.78)];
     [path stroke];
+  } else if ([name isEqualToString:@"repeatOne"]) {
+    [path moveToPoint:CGPointMake(s * 0.2, s * 0.56)]; [path addLineToPoint:CGPointMake(s * 0.2, s * 0.36)];
+    [path addLineToPoint:CGPointMake(s * 0.8, s * 0.36)]; [path moveToPoint:CGPointMake(s * 0.7, s * 0.26)];
+    [path addLineToPoint:CGPointMake(s * 0.82, s * 0.36)]; [path addLineToPoint:CGPointMake(s * 0.7, s * 0.46)];
+    [path moveToPoint:CGPointMake(s * 0.8, s * 0.44)]; [path addLineToPoint:CGPointMake(s * 0.8, s * 0.64)];
+    [path addLineToPoint:CGPointMake(s * 0.2, s * 0.64)]; [path moveToPoint:CGPointMake(s * 0.3, s * 0.54)];
+    [path addLineToPoint:CGPointMake(s * 0.18, s * 0.64)]; [path addLineToPoint:CGPointMake(s * 0.3, s * 0.74)]; [path stroke];
+    NSDictionary* attributes = @{NSFontAttributeName: [UIFont boldSystemFontOfSize:s * 0.34], NSForegroundColorAttributeName: color};
+    [@"1" drawAtPoint:CGPointMake(s * 0.42, s * 0.3) withAttributes:attributes];
   } else if ([name isEqualToString:@"repeat"]) {
     [path moveToPoint:CGPointMake(s * 0.2, s * 0.56)]; [path addLineToPoint:CGPointMake(s * 0.2, s * 0.36)];
     [path addLineToPoint:CGPointMake(s * 0.8, s * 0.36)]; [path moveToPoint:CGPointMake(s * 0.7, s * 0.26)];

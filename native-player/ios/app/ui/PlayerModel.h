@@ -19,6 +19,10 @@ extern NSString* const PhoenixPlayerChanged;  // posted on the main thread 2x pe
 - (void)previous;
 - (void)seekTo:(uint32_t)milliseconds;
 - (void)toggleShuffle;
+- (void)cycleRepeat;            // off -> all -> one -> off
+- (BOOL)addToQueue:(NSString*)uri;
+@property(nonatomic, readonly) int repeat;
+@property(nonatomic, readonly) BOOL reconnecting;
 // Loads uris as the queue starting at index; contextName is shown in Now Playing.
 - (BOOL)playURIs:(NSArray*)uris index:(NSUInteger)index contextUri:(NSString*)uri contextName:(NSString*)name;
 // Resolves a context (album/playlist/artist/collection uri) and plays it.

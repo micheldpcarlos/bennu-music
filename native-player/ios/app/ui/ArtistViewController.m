@@ -29,6 +29,9 @@ enum { SectionPopular = 0, SectionAlbums, SectionSingles, SectionAbout, SectionC
   [self setupTable];
   self.table.dataSource = self; self.table.delegate = self;
   [self.table registerClass:TrackCell.class forCellReuseIdentifier:@"track"];
+  UILongPressGestureRecognizer* press = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+  press.minimumPressDuration = 0.5;
+  [self.table addGestureRecognizer:press];
   [self.table registerClass:ShelfCell.class forCellReuseIdentifier:@"shelf"];
   [self.table registerClass:UITableViewCell.class forCellReuseIdentifier:@"about"];
   [self.table registerClass:SectionHeader.class forHeaderFooterViewReuseIdentifier:@"header"];
@@ -87,6 +90,14 @@ enum { SectionPopular = 0, SectionAlbums, SectionSingles, SectionAbout, SectionC
 - (void)shufflePopular { [self playFrom:0 shuffle:YES]; }
 - (void)playerChanged { for (UITableViewCell* cell in self.table.visibleCells) { NSIndexPath* path = [self.table indexPathForCell:cell]; if (path && path.section == SectionPopular) [self configure:(TrackCell*)cell at:path]; } }
 - (NSInteger)numberOfSectionsInTableView:(UITableView*)table { return SectionCount; }
+- (void)longPress:(UILongPressGestureRecognizer*)gesture {
+  if (gesture.state != UIGestureRecognizerStateBegan) return;
+  NSIndexPath* path = [self.table indexPathForRowAtPoint:[gesture locationInView:self.table]];
+  if (!path) return;
+  if (path.section != SectionPopular) return;
+  if (path.row >= (NSInteger)self.topTracks.count) return;
+  PhoenixTrackMenu(self, self.topTracks[path.row], [self.table cellForRowAtIndexPath:path]);
+}
 - (NSInteger)tableView:(UITableView*)table numberOfRowsInSection:(NSInteger)section {
   switch (section) {
     case SectionPopular: return MIN(5, self.topTracks.count);

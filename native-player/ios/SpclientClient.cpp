@@ -52,14 +52,18 @@ void SpclientClient::disconnect() {
   if (stream) { try { stream->close(); } catch (...) {} stream.reset(); }
 }
 SpclientClient::Response SpclientClient::get(const std::string& path, const std::string& accept) {
+  return post(path, "", "", accept);
+}
+SpclientClient::Response SpclientClient::post(const std::string& path, const std::string& body, const std::string& contentType, const std::string& accept) {
   if (path.empty() || path[0] != '/' || path.size() > 2048) throw std::invalid_argument("bad path");
   const auto token = tokenFetcher->getAccessKey();
   if (token.empty()) throw std::runtime_error("no session token");
+  const std::string method = contentType.empty() ? "GET" : "POST";
   std::lock_guard<std::mutex> lock(mutex);
   for (int attempt = 0; attempt < 2; ++attempt) {
     try {
       if (!stream || !stream->isOpen()) connect();
-      return request(path, accept, token);
+      return request(method, path, accept, token, body, contentType);
     } catch (...) {
       disconnect();
       if (attempt == 1) throw;
@@ -67,10 +71,13 @@ SpclientClient::Response SpclientClient::get(const std::string& path, const std:
   }
   throw std::runtime_error("unreachable");
 }
-SpclientClient::Response SpclientClient::request(const std::string& path, const std::string& accept, const std::string& token) {
+SpclientClient::Response SpclientClient::request(const std::string& method, const std::string& path, const std::string& accept, const std::string& token, const std::string& body, const std::string& contentType) {
   auto& s = *stream;
-  s << "GET " << path << " HTTP/1.1\r\nHost: " << host << "\r\nConnection: keep-alive\r\nAccept: " << accept
-    << "\r\nAuthorization: Bearer " << token << "\r\n\r\n";
+  s << method << " " << path << " HTTP/1.1\r\nHost: " << host << "\r\nConnection: keep-alive\r\nAccept: " << accept
+    << "\r\nAuthorization: Bearer " << token;
+  if (method == "POST") s << "\r\nContent-Type: " << contentType << "\r\nContent-Length: " << body.size();
+  s << "\r\n\r\n";
+  if (method == "POST" && !body.empty()) s.write(body.data(), static_cast<std::streamsize>(body.size()));
   s.flush();
   if (!s.good()) throw std::runtime_error("write failed");
   // Headers: read line by line into a buffer until picohttpparser accepts it.

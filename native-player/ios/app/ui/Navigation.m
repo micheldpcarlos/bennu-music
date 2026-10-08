@@ -4,6 +4,7 @@
 #import "MainTabController.h"
 #import "ListViewController.h"
 #import "ArtistViewController.h"
+#import "PlayerModel.h"
 void PhoenixOpen(NSString* uri, NSString* name, NSString* artwork) {
   if (![uri isKindOfClass:NSString.class]) return;
   UIViewController* screen = nil;
@@ -12,6 +13,29 @@ void PhoenixOpen(NSString* uri, NSString* name, NSString* artwork) {
   else if ([uri hasSuffix:@":collection"]) screen = [[ListViewController alloc] initWithKind:@"collection" uri:uri name:@"Liked Songs" artwork:nil];
   else if ([uri hasPrefix:@"spotify:artist:"]) screen = [[ArtistViewController alloc] initWithURI:uri name:name];
   if (screen) [[MainTabController shared] push:screen];
+}
+void PhoenixTrackMenu(UIViewController* from, NSDictionary* track, UIView* anchor) {
+  if (![track isKindOfClass:NSDictionary.class]) return;
+  NSString* title = [track[@"title"] isKindOfClass:NSString.class] ? track[@"title"] : @"Track";
+  UIAlertController* sheet = [UIAlertController alertControllerWithTitle:title message:track[@"artist"] preferredStyle:UIAlertControllerStyleActionSheet];
+  [sheet addAction:[UIAlertAction actionWithTitle:@"Play next" style:UIAlertActionStyleDefault handler:^(UIAlertAction* action) {
+    if (![[PlayerModel shared] addToQueue:track[@"uri"]]) {
+      UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"Nothing is playing" message:@"Start a song first, then add tracks to play next." preferredStyle:UIAlertControllerStyleAlert];
+      [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+      [from presentViewController:alert animated:YES completion:nil];
+    }
+  }]];
+  if ([track[@"albumUri"] isKindOfClass:NSString.class])
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Go to album" style:UIAlertActionStyleDefault handler:^(UIAlertAction* action) { PhoenixOpen(track[@"albumUri"], track[@"album"], track[@"artwork"]); }]];
+  NSArray* artists = track[@"artists"];
+  if ([artists isKindOfClass:NSArray.class])
+    for (NSDictionary* artist in artists)
+      if ([artist[@"uri"] isKindOfClass:NSString.class])
+        [sheet addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"Go to %@", artist[@"name"]] style:UIAlertActionStyleDefault handler:^(UIAlertAction* action) { PhoenixOpen(artist[@"uri"], artist[@"name"], nil); }]];
+  [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+  sheet.popoverPresentationController.sourceView = anchor;
+  sheet.popoverPresentationController.sourceRect = anchor.bounds;
+  [from presentViewController:sheet animated:YES completion:nil];
 }
 @implementation PhoenixViewController
 - (void)viewDidLoad {

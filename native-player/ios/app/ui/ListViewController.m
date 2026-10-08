@@ -34,6 +34,9 @@
   self.table.dataSource = self; self.table.delegate = self;
   self.table.rowHeight = 56;
   [self.table registerClass:TrackCell.class forCellReuseIdentifier:@"track"];
+  UILongPressGestureRecognizer* press = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+  press.minimumPressDuration = 0.5;
+  [self.table addGestureRecognizer:press];
   self.header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 320, 300)];
   self.artwork = [[UIImageView alloc] init];
   self.artwork.contentMode = UIViewContentModeScaleAspectFill; self.artwork.clipsToBounds = YES;
@@ -135,6 +138,13 @@
 - (void)playAll { [self playFrom:0 shuffle:NO]; }
 - (void)shuffleAll { [self playFrom:(NSUInteger)arc4random_uniform((uint32_t)MAX(1, self.tracks.count)) shuffle:YES]; }
 - (void)playerChanged { for (TrackCell* cell in self.table.visibleCells) { NSIndexPath* path = [self.table indexPathForCell:cell]; if (path) [self configure:cell at:path]; } }
+- (void)longPress:(UILongPressGestureRecognizer*)gesture {
+  if (gesture.state != UIGestureRecognizerStateBegan) return;
+  NSIndexPath* path = [self.table indexPathForRowAtPoint:[gesture locationInView:self.table]];
+  if (!path) return;
+  if (path.row >= (NSInteger)self.tracks.count) return;
+  PhoenixTrackMenu(self, self.tracks[path.row], [self.table cellForRowAtIndexPath:path]);
+}
 - (NSInteger)tableView:(UITableView*)table numberOfRowsInSection:(NSInteger)section { return self.tracks.count; }
 - (void)configure:(TrackCell*)cell at:(NSIndexPath*)path {
   NSDictionary* track = self.tracks[path.row];

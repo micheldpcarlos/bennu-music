@@ -23,6 +23,14 @@ NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
   return instance;
 }
 - (BOOL)ready { return self.snapshot.state == IPadReady; }
+- (int)repeat { return self.snapshot.repeat; }
+- (BOOL)reconnecting { return self.snapshot.reconnecting != 0; }
+- (void)cycleRepeat { ipad_player_set_repeat((self.snapshot.repeat + 1) % 3); [self refresh]; }
+- (BOOL)addToQueue:(NSString*)uri {
+  if (![uri isKindOfClass:NSString.class]) return NO;
+  NSString* json = [NSString stringWithFormat:@"{\"uris\":[\"%@\"]}", uri];
+  return ipad_player_queue_tracks(json.UTF8String) != 0;
+}
 - (void)start {
   if (self.timer) return;
   // Lock screen, Control Center and headphone buttons.
@@ -99,7 +107,13 @@ NSString* const PhoenixPlayerChanged = @"PhoenixPlayerChanged";
     if ([uris isKindOfClass:NSArray.class] && uris.count) [weakSelf playURIs:uris index:0 contextUri:uri contextName:name ?: json[@"name"]];
   }];
 }
-- (NSArray*)queueURIs { return self.queue ?: @[]; }
+- (NSArray*)queueURIs {
+  char buffer[65536];
+  if (!ipad_player_queue(buffer, sizeof(buffer)) || !buffer[0]) return self.queue ?: @[];
+  NSDictionary* json = [NSJSONSerialization JSONObjectWithData:[NSData dataWithBytes:buffer length:strlen(buffer)] options:0 error:nil];
+  NSArray* uris = [json isKindOfClass:NSDictionary.class] ? json[@"uris"] : nil;
+  return [uris isKindOfClass:NSArray.class] ? uris : (self.queue ?: @[]);
+}
 - (void)signOut {
   self.accountName = nil; self.accountImage = nil; self.contextName = nil; self.contextUri = nil; self.queue = nil;
   ipad_engine_stop();

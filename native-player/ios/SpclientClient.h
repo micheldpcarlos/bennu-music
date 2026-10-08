@@ -17,9 +17,10 @@ class SpclientClient {
   ~SpclientClient();
   // path starts with '/'. Sends the session bearer token. Throws on transport failure.
   Response get(const std::string& path, const std::string& accept = "application/json");
+  Response post(const std::string& path, const std::string& body, const std::string& contentType, const std::string& accept = "application/json");
   static std::string resolveHost();  // "host:port", cached process-wide
  private:
-  Response request(const std::string& path, const std::string& accept, const std::string& token);
+  Response request(const std::string& method, const std::string& path, const std::string& accept, const std::string& token, const std::string& body, const std::string& contentType);
   void connect();
   void disconnect();
   std::shared_ptr<cspot::AccessKeyFetcher> tokenFetcher;

@@ -60,7 +60,9 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   if (snapshot.state == IPadReady && !self.loadedOnce) { self.loadedOnce = YES; [self load]; }
   if (snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; [self.accountButton setImage:[PhoenixTheme icon:@"account" size:30 color:[PhoenixTheme text]] forState:UIControlStateNormal]; self.recent = nil; self.playlists = nil; [self renderGreeting]; [self.table reloadData]; }
   if (snapshot.state == IPadFailed) self.status.text = [NSString stringWithFormat:@"%s Close and reopen the app to reconnect.", snapshot.error];
+  else if (snapshot.reconnecting) self.status.text = @"Connection lost. Reconnecting to Spotify…";
   else if (snapshot.state == IPadConnecting) self.status.text = @"Connecting to Spotify…";
+  else if (snapshot.state == IPadReady && [self.status.text hasPrefix:@"Connection lost"]) self.status.text = @"";
   else if (snapshot.state == IPadWaiting) self.status.text = @"No account yet. Tap the account icon to connect Spotify.";
 }
 - (void)load {

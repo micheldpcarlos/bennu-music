@@ -24,6 +24,9 @@ enum { SearchSongs = 0, SearchArtists, SearchAlbums, SearchCount };
   [self setupTable];
   self.table.dataSource = self; self.table.delegate = self;
   [self.table registerClass:TrackCell.class forCellReuseIdentifier:@"track"];
+  UILongPressGestureRecognizer* press = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)];
+  press.minimumPressDuration = 0.5;
+  [self.table addGestureRecognizer:press];
   [self.table registerClass:EntityCell.class forCellReuseIdentifier:@"entity"];
   [self.table registerClass:SectionHeader.class forHeaderFooterViewReuseIdentifier:@"header"];
   self.table.rowHeight = 60;
@@ -82,6 +85,14 @@ enum { SearchSongs = 0, SearchArtists, SearchAlbums, SearchCount };
 }
 - (void)playerChanged { for (UITableViewCell* cell in self.table.visibleCells) { NSIndexPath* path = [self.table indexPathForCell:cell]; if (path && path.section == SearchSongs) [self configure:(TrackCell*)cell at:path]; } }
 - (NSInteger)numberOfSectionsInTableView:(UITableView*)table { return SearchCount; }
+- (void)longPress:(UILongPressGestureRecognizer*)gesture {
+  if (gesture.state != UIGestureRecognizerStateBegan) return;
+  NSIndexPath* path = [self.table indexPathForRowAtPoint:[gesture locationInView:self.table]];
+  if (!path) return;
+  if (path.section != SearchSongs) return;
+  if (path.row >= (NSInteger)self.tracks.count) return;
+  PhoenixTrackMenu(self, self.tracks[path.row], [self.table cellForRowAtIndexPath:path]);
+}
 - (NSInteger)tableView:(UITableView*)table numberOfRowsInSection:(NSInteger)section {
   return section == SearchSongs ? self.tracks.count : section == SearchArtists ? self.artists.count : self.albums.count;
 }
