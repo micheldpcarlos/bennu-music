@@ -11,7 +11,42 @@ toolchain that iOS 9 requires, with the browsing layer, authentication flow and 
 written for this project. **A Spotify Premium account is required** (Spotify Connect and
 audio streaming are Premium features).
 
-<p align="center"><img src="native-player/ios/app/icon/AppIcon-152.png" width="76" alt="Bennu Music icon"></p>
+<p align="center">
+  <a href="https://github.com/micheldpcarlos/bennu-music/releases/latest"><img src="https://img.shields.io/github/v/release/micheldpcarlos/bennu-music?label=release&color=1DB954" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/iOS-9.3.5%20%7C%2032--bit-black" alt="iOS 9.3.5, 32-bit">
+  <img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="GPL-3.0">
+  <img src="https://img.shields.io/badge/Spotify-Premium%20required-1DB954" alt="Spotify Premium required">
+</p>
+
+<p align="center"><img src="docs/screenshots/now-playing.png" width="760" alt="Now Playing on an iPad 2"></p>
+
+## Screenshots
+
+| Home | Search |
+|---|---|
+| ![Home](docs/screenshots/home.png) | ![Search](docs/screenshots/search-browse.png) |
+
+| Album | Your Library |
+|---|---|
+| ![Album](docs/screenshots/album-playing.png) | ![Library](docs/screenshots/library.png) |
+
+**Signing in.** Scan the QR code with your phone, or pick the iPad in Spotify's device list. The account screen shows who is signed in and controls visibility on the network.
+
+| Welcome | Account |
+|---|---|
+| ![Welcome](docs/screenshots/welcome.png) | ![Account](docs/screenshots/account.png) |
+
+**Visualizations.** The Windows Media Player 9 catalog, reimplemented for the iPad 2's CPU.
+
+| Alchemy | Plenoptic: Smokey Circles |
+|---|---|
+| ![Alchemy](docs/screenshots/viz-alchemy.gif) | ![Plenoptic](docs/screenshots/viz-plenoptic.gif) |
+
+| Ambience: Down the Drain | Spikes |
+|---|---|
+| ![Ambience](docs/screenshots/viz-drain.gif) | ![Spikes](docs/screenshots/viz-spikes.gif) |
+
+<p align="center"><img src="docs/screenshots/visualizer-menu.png" width="520" alt="Visualization picker"></p>
 
 ## What it does
 
@@ -71,14 +106,23 @@ mosaic covers are composed on the device. See `docs/search-alternatives.md`.
 images decoded off the main thread. The visualizer renders a half-resolution bitmap that
 the GPU scales (`docs/visualization-research.md` documents the presets).
 
+## Install (no computer needed)
+
+1. Jailbreak the device with [Phœnix](https://phoenixpwn.com/) (iOS 9.3.5 and 9.3.6, 32-bit) and open Cydia once so `dpkg` is set up.
+2. Download the latest `.deb` from the [Releases page](https://github.com/micheldpcarlos/bennu-music/releases/latest) on the iPad (Safari) or copy it over.
+3. Install it with Filza (tap the file, Install) or over SSH: `dpkg -i app.bennu.music_*.deb`. The icon appears after the installer refreshes the home screen.
+4. Open Bennu Music and sign in: scan the QR code with your phone, or play something in Spotify on your phone and pick "Bennu Music" in the devices list.
+
+Updates are the same `.deb` again. To remove it: `dpkg -r app.bennu.music`, or Cydia's installed list.
+
 ## Requirements
 
 - An iPad 2 (or another ARMv7 device) on iOS 9.3.5, jailbroken, with OpenSSH installed and
   your SSH public key authorized for `root`.
 - A Spotify Premium account.
-- A Mac with Xcode command-line tools, CMake, Python 3 and [ldid](https://github.com/ProcursusTeam/ldid)
+- To build from source only: a Mac with Xcode command-line tools, CMake, Python 3 and [ldid](https://github.com/ProcursusTeam/ldid)
   (`brew install cmake ldid`).
-- The iOS 9.3 SDK and LLVM 3.8.1 libc++ headers (see Toolchain). Current Xcode cannot target
+- To build from source only: the iOS 9.3 SDK and LLVM 3.8.1 libc++ headers (see Toolchain). Current Xcode cannot target
   iOS 9 on its own.
 
 ## Toolchain
@@ -105,8 +149,9 @@ scripts/build.sh
 
 The result is `native-player/ios/build/BennuMusic.app`, a bundle with one
 executable named after its hash, signed with `ldid` and a private Keychain access group.
+`scripts/package.sh` then produces the `.deb` and a zip of the bundle under `dist/`.
 
-## Install
+## Install a development build
 
 ```sh
 IPAD=root@<ipad address> scripts/install.sh
@@ -123,7 +168,7 @@ The app registers the `bennu://` URL scheme so it can be driven over SSH with `u
 
 | URL | Effect |
 |---|---|
-| `bennu://screenshot` | Writes `Documents/bennu-screen.png` |
+| `bennu://screenshot`, `bennu://record?frames=24%26ms=150` | Writes `Documents/bennu-screen.png`, or a burst of JPEG frames for GIFs |
 | `bennu://tab?n=0..2`, `bennu://back`, `bennu://scroll?y=800` | Navigation |
 | `bennu://search?q=...`, `bennu://open?uri=spotify:album:...`, `bennu://play?uri=...` | Browsing and playback |
 | `bennu://nowplaying`, `bennu://seek?ms=266000`, `bennu://volume?v=32768`, `bennu://repeat?mode=1`, `bennu://enqueue?uri=...` | Player |

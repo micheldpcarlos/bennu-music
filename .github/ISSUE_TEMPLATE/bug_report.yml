@@ -1,0 +1,58 @@
+name: Bug report
+description: Something does not work on your device
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please never paste tokens, pairing codes or the contents of
+        `bennu-volume`/Keychain. Log lines from `Documents/cspot-app.log` are welcome after you
+        check them for anything that looks like a credential.
+  - type: input
+    id: device
+    attributes:
+      label: Device and iOS version
+      placeholder: "iPad 2 (Wi-Fi), iOS 9.3.5, Phoenix jailbreak"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Bennu Music version
+      description: From the account screen, or the release you installed.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen?
+      options:
+        - Sign-in (QR or Spotify Connect pairing)
+        - Playback (no sound, stops, skips)
+        - Browsing (Home, Search, Library, album or artist pages)
+        - Now Playing / queue / visualizations
+        - Controlling from the phone (Spotify Connect)
+        - Install or update
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the app
+        2. ...
+  - type: textarea
+    id: log
+    attributes:
+      label: Log excerpt (optional)
+      description: Lines from `/var/mobile/Documents/cspot-app.log` around the problem, with anything secret removed.
+      render: text

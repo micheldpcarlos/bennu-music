@@ -1,0 +1,21 @@
+name: Feature request
+description: Something the app should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like?
+      description: Describe the feature as you would use it. If Spotify's own app does it, say where it lives there.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does it matter on an old iPad?
+      description: The device is slow and the screen may be off most of the time; context helps us judge priority.
+  - type: input
+    id: device
+    attributes:
+      label: Your device
+      placeholder: "iPad 2, iOS 9.3.5"

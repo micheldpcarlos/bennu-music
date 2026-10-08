@@ -31,12 +31,27 @@ static void screenshot(void) {
   BOOL ok = [UIImagePNGRepresentation(image) writeToFile:[documents stringByAppendingPathComponent:@"bennu-screen.png"] atomically:YES];
   fprintf(stderr, "DEV: screenshot %s\n", ok ? "saved" : "failed");
 }
+// Records a burst of JPEG frames (Documents/bennu-frame-NNN.jpg) for README GIFs.
+static void recordFrames(int remaining, int index, double interval) {
+  if (remaining <= 0) { fprintf(stderr, "DEV: recorded %d frames\n", index); return; }
+  UIWindow* window = UIApplication.sharedApplication.keyWindow;
+  UIGraphicsBeginImageContextWithOptions(window.bounds.size, YES, 1);
+  [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
+  UIImage* image = UIGraphicsGetImageFromCurrentImageContext(); UIGraphicsEndImageContext();
+  NSString* documents = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+  [UIImageJPEGRepresentation(image, 0.85) writeToFile:[documents stringByAppendingPathComponent:[NSString stringWithFormat:@"bennu-frame-%03d.jpg", index]] atomically:YES];
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(interval * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ recordFrames(remaining - 1, index + 1, interval); });
+}
 BOOL BennuHandleURL(NSURL* url) {
   NSString* action = url.host ?: @"";
   NSDictionary* query = queryOf(url);
   MainTabController* tabs = [MainTabController shared];
   fprintf(stderr, "DEV: url action=%s\n", action.UTF8String);
-  if ([action isEqualToString:@"screenshot"]) {
+  if ([action isEqualToString:@"record"]) {
+    int frames = query[@"frames"] ? [query[@"frames"] intValue] : 20;
+    double interval = query[@"ms"] ? [query[@"ms"] doubleValue] / 1000.0 : 0.15;
+    recordFrames(frames, 0, interval);
+  } else if ([action isEqualToString:@"screenshot"]) {
     // Give pending layout/image loads a moment, then capture.
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ screenshot(); });
   } else if ([action isEqualToString:@"tab"]) {
