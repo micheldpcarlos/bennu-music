@@ -67,6 +67,8 @@ BOOL PhoenixHandleURL(NSURL* url) {
     UINavigationController* navigation = (UINavigationController*)tabs.selectedViewController;
     PhoenixViewController* top = (PhoenixViewController*)navigation.topViewController;
     if ([top isKindOfClass:PhoenixViewController.class]) [top.table setContentOffset:CGPointMake(0, [query[@"y"] floatValue]) animated:NO];
+  } else if ([action isEqualToString:@"visible"]) {
+    ipad_engine_set_discoverable([query[@"on"] boolValue]);
   } else if ([action isEqualToString:@"signout"]) {
     if (tabs.presentedViewController) [tabs dismissViewControllerAnimated:NO completion:nil];
     if (ipad_auth_clear()) [[PlayerModel shared] signOut];
