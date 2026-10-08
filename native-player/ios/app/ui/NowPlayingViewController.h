@@ -2,4 +2,5 @@
 #import <UIKit/UIKit.h>
 @interface NowPlayingViewController : UIViewController
 - (void)showVisualization:(NSString*)family preset:(NSString*)preset;
+- (void)chooseVisualization;
 @end

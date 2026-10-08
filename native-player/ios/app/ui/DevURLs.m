@@ -70,6 +70,10 @@ BOOL PhoenixHandleURL(NSURL* url) {
     UINavigationController* navigation = (UINavigationController*)tabs.selectedViewController;
     PhoenixViewController* top = (PhoenixViewController*)navigation.topViewController;
     if ([top isKindOfClass:PhoenixViewController.class]) [top.table setContentOffset:CGPointMake(0, [query[@"y"] floatValue]) animated:NO];
+  } else if ([action isEqualToString:@"vizmenu"]) {
+    if (!tabs.presentedViewController) [tabs showNowPlaying];
+    NowPlayingViewController* nowPlaying = (NowPlayingViewController*)tabs.presentedViewController;
+    if ([nowPlaying isKindOfClass:NowPlayingViewController.class]) [nowPlaying chooseVisualization];
   } else if ([action isEqualToString:@"viz"]) {
     if (!tabs.presentedViewController) [tabs showNowPlaying];
     NowPlayingViewController* nowPlaying = (NowPlayingViewController*)tabs.presentedViewController;

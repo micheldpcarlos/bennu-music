@@ -5,6 +5,7 @@
 #import "ImageCache.h"
 #import "QueueViewController.h"
 #import "VisualizerView.h"
+#import "VisualizerMenu.h"
 @interface NowPlayingViewController ()
 @property(nonatomic, strong) UIButton* closeButton;
 @property(nonatomic, strong) UILabel* contextLabel;
@@ -161,22 +162,13 @@
 - (void)previous { [[PlayerModel shared] previous]; }
 - (void)shuffle { [[PlayerModel shared] toggleShuffle]; }
 - (void)repeatTapped { [[PlayerModel shared] cycleRepeat]; }
-// Visualization menu: family first, then its presets (Windows Media Player 9 collections).
+// Visualization picker: one panel with families and presets side by side.
 - (void)chooseVisualization {
-  UIAlertController* menu = [UIAlertController alertControllerWithTitle:@"Visualizations" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-  for (NSString* family in [VisualizerView families])
-    [menu addAction:[UIAlertAction actionWithTitle:family style:UIAlertActionStyleDefault handler:^(UIAlertAction* action) { [self choosePresetIn:family]; }]];
-  [menu addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-  menu.popoverPresentationController.sourceView = self.vizButton; menu.popoverPresentationController.sourceRect = self.vizButton.bounds;
-  [self presentViewController:menu animated:YES completion:nil];
-}
-- (void)choosePresetIn:(NSString*)family {
-  UIAlertController* menu = [UIAlertController alertControllerWithTitle:family message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-  for (NSString* preset in [VisualizerView presetsForFamily:family])
-    [menu addAction:[UIAlertAction actionWithTitle:preset style:UIAlertActionStyleDefault handler:^(UIAlertAction* action) { [self showVisualization:family preset:preset]; }]];
-  [menu addAction:[UIAlertAction actionWithTitle:@"Back" style:UIAlertActionStyleCancel handler:^(UIAlertAction* action) { [self chooseVisualization]; }]];
-  menu.popoverPresentationController.sourceView = self.vizButton; menu.popoverPresentationController.sourceRect = self.vizButton.bounds;
-  [self presentViewController:menu animated:YES completion:nil];
+  NSArray* saved = [NSUserDefaults.standardUserDefaults arrayForKey:@"PhoenixVisualization"];
+  VisualizerMenu* menu = [[VisualizerMenu alloc] init];
+  __weak NowPlayingViewController* weakSelf = self;
+  menu.onPick = ^(NSString* family, NSString* preset) { [weakSelf showVisualization:family preset:preset]; };
+  [menu showIn:self.view anchor:self.vizButton selectedFamily:saved.count > 1 ? saved[0] : nil preset:saved.count > 1 ? saved[1] : nil];
 }
 - (void)showVisualization:(NSString*)family preset:(NSString*)preset {
   [NSUserDefaults.standardUserDefaults setObject:@[family, preset] forKey:@"PhoenixVisualization"];
