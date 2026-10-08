@@ -301,6 +301,19 @@ void Catalog::search(const std::string& query, const Publish& publish) {
   publish(result.dump(), true);
 }
 
+static std::string base64ToHex(const std::string& input) {
+  static const std::string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  std::string bytes; unsigned buffer = 0; int bits = 0;
+  for (char c : input) {
+    if (c == '=') break;
+    auto value = alphabet.find(c); if (value == std::string::npos) return {};
+    buffer = (buffer << 6) | static_cast<unsigned>(value); bits += 6;
+    if (bits >= 8) { bits -= 8; bytes += static_cast<char>((buffer >> bits) & 0xff); }
+  }
+  static const char* digits = "0123456789abcdef"; std::string hex;
+  for (unsigned char b : bytes) { hex += digits[b >> 4]; hex += digits[b & 15]; }
+  return hex;
+}
 std::string Catalog::albumSummary(const std::string& gidHex) {
   int status = 0;
   auto body = getJSON("/metadata/4/album/" + gidHex + "?market=from_token", status);
@@ -400,8 +413,10 @@ void Catalog::playlist(const std::string& id, const Publish& publish) {
       if (!display.empty()) owner = display;
     } catch (...) {}
   }
+  auto artwork = imageURL(str(meta, "image_url", 2048));
+  if (artwork.empty()) artwork = playlistCover(id);
   JSON summary{{"uri", "spotify:playlist:" + id}, {"name", name}, {"description", description}, {"owner", owner},
-      {"artwork", imageURL(str(meta, "image_url", 512))}, {"count", uris.size()}};
+      {"artwork", artwork}, {"count", uris.size()}};
   hydrate(uris, [&](size_t, bool done) { summary["tracks"] = TRACKLIST(uris); summary["loading"] = !done; publish(summary.dump(), done); });
 }
 
@@ -435,7 +450,9 @@ void Catalog::recent(const Publish& publish) {
         } else if (uri.compare(0, 17, "spotify:playlist:") == 0 && validID(uri.substr(17))) {
           std::string metadata; contextTrackURIs(uri, &metadata);
           auto meta = JSON::parse(metadata);
-          items.push_back({{"uri", uri}, {"name", str(meta, "context_description", 256)}, {"subtitle", "Playlist"}, {"artwork", imageURL(str(meta, "image_url", 512))}, {"type", "playlist"}});
+          auto artwork = imageURL(str(meta, "image_url", 2048));
+          if (artwork.empty()) artwork = playlistCover(uri.substr(17));
+          items.push_back({{"uri", uri}, {"name", str(meta, "context_description", 256)}, {"subtitle", "Playlist"}, {"artwork", artwork}, {"type", "playlist"}});
         } else if (uri.find(":collection") != std::string::npos) {
           items.push_back({{"uri", uri}, {"name", "Liked Songs"}, {"subtitle", "Playlist"}, {"artwork", ""}, {"type", "collection"}});
         } else continue;
@@ -446,18 +463,33 @@ void Catalog::recent(const Publish& publish) {
   publish(JSON{{"items", items}, {"loading", false}}.dump(), true);
 }
 
-static std::string base64ToHex(const std::string& input) {
-  static const std::string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  std::string bytes; unsigned buffer = 0; int bits = 0;
-  for (char c : input) {
-    if (c == '=') break;
-    auto value = alphabet.find(c); if (value == std::string::npos) return {};
-    buffer = (buffer << 6) | static_cast<unsigned>(value); bits += 6;
-    if (bits >= 8) { bits -= 8; bytes += static_cast<char>((buffer >> bits) & 0xff); }
-  }
-  static const char* digits = "0123456789abcdef"; std::string hex;
-  for (unsigned char b : bytes) { hex += digits[b >> 4]; hex += digits[b & 15]; }
-  return hex;
+// Spotify-generated playlists carry their cover only in the playlist record's pictureSize list.
+std::string Catalog::playlistCover(const std::string& id) {
+  if (!validID(id)) return {};
+  { std::lock_guard<std::mutex> lock(cacheMutex); auto found = coverCache.find(id); if (found != coverCache.end()) return found->second; }
+  std::string cover;
+  try {
+    int status = 0;
+    auto body = getJSON("/playlist/v2/playlist/" + id + "?decorate=attributes,picture", status);
+    if (status == 200) {
+      auto document = JSON::parse(body);
+      const JSON& attributes = document.count("attributes") ? document["attributes"] : JSON::object();
+      std::string preferred, any;
+      if (attributes.count("pictureSize") && attributes["pictureSize"].is_array())
+        for (const auto& entry : attributes["pictureSize"]) {
+          auto url = imageURL(str(entry, "url", 2048)), target = str(entry, "targetName", 16);
+          if (url.empty()) continue;
+          if (any.empty()) any = url;
+          if (target == "default") preferred = url;
+        }
+      cover = preferred.empty() ? any : preferred;
+      if (cover.empty()) { auto hex = base64ToHex(str(attributes, "picture", 64)); if (hex.size() == 40) cover = imageURL(hex); }
+    }
+  } catch (...) { std::fprintf(stderr, "CATALOG: playlist cover lookup failed\n"); }
+  std::lock_guard<std::mutex> lock(cacheMutex);
+  if (coverCache.size() > 500) coverCache.clear();
+  coverCache[id] = cover;
+  return cover;
 }
 void Catalog::playlists(const Publish& publish) {
   const auto username = context_->config.username;
@@ -485,6 +517,7 @@ void Catalog::playlists(const Publish& publish) {
         entry["count"] = num(m, "length");
       }
       if (entry["name"].get<std::string>().empty()) entry["name"] = "Playlist";
+      if (entry["artwork"].get<std::string>().empty()) entry["artwork"] = playlistCover(uri.substr(17));
       list.push_back(entry);
     }
   }

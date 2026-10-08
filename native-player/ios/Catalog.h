@@ -38,6 +38,8 @@ class Catalog {
   std::string trackJSON(const std::string& uri);
   std::string albumSummary(const std::string& gidHex);
   std::string artistSummary(const std::string& gidHex);
+  std::string playlistCover(const std::string& id);   // fallback for generated playlists (charts, radios, mixes)
+  std::map<std::string, std::string> coverCache;
   std::shared_ptr<cspot::Context> context_;
   std::unique_ptr<SpclientClient> client, client2;
   std::string cacheDir;
