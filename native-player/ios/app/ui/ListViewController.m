@@ -99,9 +99,10 @@
 }
 - (void)layoutHeader {
   CGFloat width = self.view.bounds.size.width;
-  BOOL wide = width > 600;
-  CGFloat art = wide ? 240 : 200;
-  self.header.frame = CGRectMake(0, 0, width, wide ? art + 80 : art + 190);
+  BOOL wide = width > 600, narrow = width < 500;
+  CGFloat art = wide ? 240 : 200, extra = narrow ? 36 : 0;   // phones get a two-line title
+  self.titleLabel.numberOfLines = narrow ? 2 : 1;
+  self.header.frame = CGRectMake(0, 0, width, wide ? art + 80 : art + 190 + extra);
   if (wide) {
     self.artwork.frame = CGRectMake(24, 16, art, art);
     CGFloat x = 24 + art + 24, w = width - x - 24;
@@ -113,12 +114,12 @@
     self.status.frame = CGRectMake(x + 132, 198, w - 132, 20);
   } else {
     self.artwork.frame = CGRectMake((width - art) / 2, 16, art, art);
-    self.titleLabel.frame = CGRectMake(16, art + 28, width - 32, 40);
-    self.subtitleLabel.frame = CGRectMake(16, art + 70, width - 32, 20);
-    self.detailLabel.frame = CGRectMake(16, art + 92, width - 120, 36);
-    self.playButton.frame = CGRectMake(width - 80, art + 92, 56, 56);
-    self.shuffleButton.frame = CGRectMake(width - 136, art + 96, 48, 48);
-    self.status.frame = CGRectMake(16, art + 134, width - 32, 20);
+    self.titleLabel.frame = CGRectMake(16, art + 28, width - 32, 40 + extra);
+    self.subtitleLabel.frame = CGRectMake(16, art + 70 + extra, width - 32, 20);
+    self.detailLabel.frame = CGRectMake(16, art + 92 + extra, width - 120, 36);
+    self.playButton.frame = CGRectMake(width - 80, art + 92 + extra, 56, 56);
+    self.shuffleButton.frame = CGRectMake(width - 136, art + 96 + extra, 48, 48);
+    self.status.frame = CGRectMake(16, art + 134 + extra, width - 32, 20);
   }
   self.table.tableHeaderView = self.header;
 }

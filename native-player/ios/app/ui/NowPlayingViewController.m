@@ -102,26 +102,29 @@
   self.visualizer.frame = self.view.bounds;
   self.contextLabel.frame = CGRectMake(80, 28, width - 160, 16);
   self.contextName.frame = CGRectMake(80, 46, width - 160, 20);
-  CGFloat art = landscape ? MIN(height - 160, width * 0.42) : MIN(width - 160, height * 0.46);
-  CGFloat contentWidth = landscape ? width - art - 3 * 48 : MIN(width - 120, 640);
+  BOOL narrow = width < 500;   // phones in portrait
+  CGFloat art = landscape ? MIN(height - 160, width * 0.42) : narrow ? MIN(width - 48, height * (height < 520 ? 0.31 : 0.36)) : MIN(width - 160, height * 0.46);
+  CGFloat contentWidth = landscape ? width - art - 3 * 48 : narrow ? width - 48 : MIN(width - 120, 640);
   CGFloat artX = landscape ? 48 : (width - art) / 2;
-  CGFloat artY = landscape ? (height - art) / 2 + 10 : 96;
+  CGFloat artY = landscape ? (height - art) / 2 + 10 : narrow ? 72 : 96;
   self.artwork.frame = CGRectMake(artX, artY, art, art);
   CGFloat x = landscape ? artX + art + 48 : (width - contentWidth) / 2;
-  CGFloat y = landscape ? artY + art * 0.1 : artY + art + 36;
+  CGFloat y = landscape ? artY + art * 0.1 : artY + art + (narrow ? 16 : 36);
+  CGFloat skip = narrow ? 48 : 56, side = narrow ? 12 : 24;   // previous/next size and their gap to play
   self.titleLabel.frame = CGRectMake(x, y, contentWidth, 30);
   self.artistLabel.frame = CGRectMake(x, y + 32, contentWidth, 22);
-  self.slider.frame = CGRectMake(x, y + 72, contentWidth, 30);
-  self.elapsed.frame = CGRectMake(x, y + 104, contentWidth / 2, 16);
-  self.remaining.frame = CGRectMake(x + contentWidth / 2, y + 104, contentWidth / 2, 16);
-  CGFloat center = x + contentWidth / 2, controlsY = y + 140;
+  CGFloat sliderY = y + (narrow ? 60 : 72);
+  self.slider.frame = CGRectMake(x, sliderY, contentWidth, 30);
+  self.elapsed.frame = CGRectMake(x, sliderY + 32, contentWidth / 2, 16);
+  self.remaining.frame = CGRectMake(x + contentWidth / 2, sliderY + 32, contentWidth / 2, 16);
+  CGFloat center = x + contentWidth / 2, controlsY = sliderY + (narrow ? 52 : 68);
   self.playButton.frame = CGRectMake(center - 36, controlsY, 72, 72);
-  self.previousButton.frame = CGRectMake(center - 36 - 24 - 56, controlsY + 8, 56, 56);
-  self.nextButton.frame = CGRectMake(center + 36 + 24, controlsY + 8, 56, 56);
+  self.previousButton.frame = CGRectMake(center - 36 - side - skip, controlsY + (72 - skip) / 2, skip, skip);
+  self.nextButton.frame = CGRectMake(center + 36 + side, controlsY + (72 - skip) / 2, skip, skip);
   self.shuffleButton.frame = CGRectMake(x, controlsY + 12, 48, 48);
   self.repeatButton.frame = CGRectMake(x + contentWidth - 48, controlsY + 12, 48, 48);
   // Bottom action row, like Spotify's: visualizer on the left, queue on the right, status in between.
-  CGFloat rowY = controlsY + 92;
+  CGFloat rowY = controlsY + (narrow ? 80 : 92);
   self.vizButton.frame = CGRectMake(x, rowY, 48, 48);
   self.queueButton.frame = CGRectMake(x + contentWidth - 48, rowY, 48, 48);
   self.status.frame = CGRectMake(x + 56, rowY + 4, contentWidth - 112, 40);

@@ -117,17 +117,20 @@
 - (void)viewDidLayoutSubviews {
   [super viewDidLayoutSubviews];
   CGFloat width = self.view.bounds.size.width;
-  BOOL wide = width > 700;
+  BOOL wide = width > 700, narrow = width < 500;   // narrow: phones
   self.closeButton.frame = CGRectMake(width - 60, 24, 44, 44);
-  self.titleLabel.frame = CGRectMake(32, 40, width - 120, 40);
+  self.titleLabel.font = [BennuTheme bold:narrow ? 24 : 30];
+  self.titleLabel.frame = CGRectMake(32, 40, width - 100, 40);
   BOOL signedIn = [PlayerModel shared].ready;
   self.avatar.frame = CGRectMake(32, 100, 80, 80);
-  self.accountLabel.frame = signedIn ? CGRectMake(128, 110, width - 160, 44) : CGRectMake(32, 84, width - 64, 44);
-  self.signOutButton.frame = CGRectMake(128, 156, 110, 32);
+  self.accountLabel.numberOfLines = narrow ? 3 : 2;
+  self.accountLabel.frame = signedIn ? (narrow ? CGRectMake(32, 192, width - 64, 60) : CGRectMake(128, 110, width - 160, 44)) : CGRectMake(32, 84, width - 64, 44);
+  self.signOutButton.frame = narrow && signedIn ? CGRectMake(32, 258, 110, 32) : CGRectMake(128, 156, 110, 32);
   CGFloat top = 124, gap = 24;
   CGFloat cardWidth = wide ? (width - 32 * 2 - gap) / 2 : width - 64;
   CGFloat inner = cardWidth - 48, qr = MIN(220, inner);
-  CGFloat qrCardHeight = 60 + qr + 300;
+  BOOL stackButtons = cardWidth < 420;   // phones: Retry goes under Get a new code
+  CGFloat qrCardHeight = 60 + qr + 300 + (stackButtons ? 40 : 0);
   self.qrCard.frame = CGRectMake(32, top, cardWidth, qrCardHeight);
   self.connectCard.frame = wide ? CGRectMake(32 + cardWidth + gap, top, cardWidth, 240) : CGRectMake(32, top + qrCardHeight + gap, cardWidth, 240);
   self.qrTitle.frame = CGRectMake(24, 20, inner, 26);
@@ -136,14 +139,16 @@
   self.qrHint.frame = CGRectMake(24, 60 + qr + 58, inner, 120);
   self.qrStatus.frame = CGRectMake(24, 60 + qr + 186, inner, 40);
   self.codeButton.frame = CGRectMake(24, 60 + qr + 236, 170, 32);
-  self.retryButton.frame = CGRectMake(206, 60 + qr + 236, 140, 32);
+  self.retryButton.frame = stackButtons ? CGRectMake(24, 60 + qr + 276, 170, 32) : CGRectMake(206, 60 + qr + 236, 140, 32);
   self.connectTitle.frame = CGRectMake(24, 20, inner, 26);
   self.connectHint.frame = CGRectMake(24, 56, inner, 110);
   CGRect connect = self.connectCard.frame;
-  self.visibilityCard.frame = signedIn ? CGRectMake(32, 220, width - 64, 110) : CGRectMake(connect.origin.x, connect.origin.y + connect.size.height + gap, connect.size.width, 110);
+  CGFloat cardHeight = narrow ? 150 : 110;
+  self.visibilityCard.frame = signedIn ? CGRectMake(32, narrow ? 310 : 220, width - 64, cardHeight) : CGRectMake(connect.origin.x, connect.origin.y + connect.size.height + gap, connect.size.width, cardHeight);
   CGFloat vw = self.visibilityCard.frame.size.width;
-  self.visibilityTitle.frame = CGRectMake(24, 18, vw - 120, 24);
-  self.visibilityHint.frame = CGRectMake(24, 46, vw - 120, 56);
+  self.visibilityTitle.numberOfLines = narrow ? 2 : 1;
+  self.visibilityTitle.frame = CGRectMake(24, 18, vw - 100, narrow ? 44 : 24);
+  self.visibilityHint.frame = narrow ? CGRectMake(24, 66, vw - 48, 76) : CGRectMake(24, 46, vw - 120, 56);
   self.visibilitySwitch.frame = CGRectMake(vw - 24 - 51, 22, 51, 31);
   self.connectCard.alpha = self.visibilitySwitch.on ? 1 : 0.4;
   self.connectButton.frame = CGRectMake(24, 180, 250, 32);

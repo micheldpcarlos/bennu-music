@@ -47,7 +47,18 @@ BOOL BennuHandleURL(NSURL* url) {
   NSDictionary* query = queryOf(url);
   MainTabController* tabs = [MainTabController shared];
   fprintf(stderr, "DEV: url action=%s\n", action.UTF8String);
-  if ([action isEqualToString:@"record"]) {
+  if ([action isEqualToString:@"window"]) {
+    // Preview phone layouts on the iPad: bennu://window?w=320%26h=568 ; no parameters restores the screen size.
+    UIWindow* window = UIApplication.sharedApplication.keyWindow;
+    CGFloat w = [query[@"w"] floatValue], h = [query[@"h"] floatValue];
+    window.frame = (w > 0 && h > 0) ? CGRectMake(0, 0, w, h) : UIScreen.mainScreen.bounds;
+    [window.rootViewController.view setNeedsLayout];
+  } else if ([action isEqualToString:@"rotate"]) {
+    NSString* o = query[@"o"] ?: @"portrait";
+    NSInteger value = [o isEqualToString:@"landscape"] ? UIInterfaceOrientationLandscapeLeft : UIInterfaceOrientationPortrait;
+    [UIDevice.currentDevice setValue:@(value) forKey:@"orientation"];
+    [UIViewController attemptRotationToDeviceOrientation];
+  } else if ([action isEqualToString:@"record"]) {
     int frames = query[@"frames"] ? [query[@"frames"] intValue] : 20;
     double interval = query[@"ms"] ? [query[@"ms"] doubleValue] / 1000.0 : 0.15;
     recordFrames(frames, 0, interval);

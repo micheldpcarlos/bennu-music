@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 (2026-10-08)
+
+- Runs on iPhone and iPod touch as well as iPad: iPhone 4S, iPhone 5, iPhone 5c and iPod
+  touch (5th generation) are now accepted, with layouts for 320-point screens and launch
+  images so the app is not letterboxed. Phone layouts were verified at phone sizes on an
+  iPad; reports from real phones are welcome.
+- Now Playing: visualizer and queue buttons form a bottom action row.
+- Fixes: Your Library loaded only after the next track change; the position carried over
+  from the previous track on natural transitions; the Connect volume read as zero on the phone.
+
 ## 0.1.0 (2026-10-08)
 
 First public release.

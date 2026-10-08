@@ -29,17 +29,22 @@
   [self.backdrop addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(dismiss)]];
   [self addSubview:self.backdrop];
   CGRect anchorFrame = [anchor convertRect:anchor.bounds toView:parent];
-  CGFloat width = 460, height = MIN(parent.bounds.size.height - anchorFrame.origin.y - anchorFrame.size.height - 24, 420);
-  self.panel = [[UIView alloc] initWithFrame:CGRectMake(parent.bounds.size.width - width - 16, CGRectGetMaxY(anchorFrame) + 6, width, height)];
+  CGFloat width = MIN(460, parent.bounds.size.width - 32);
+  CGFloat below = parent.bounds.size.height - CGRectGetMaxY(anchorFrame) - 24, above = anchorFrame.origin.y - 24;
+  BOOL openUp = below < 220 && above > below;   // the button sits in the bottom row on phones
+  CGFloat height = MIN(openUp ? above : below, 420);
+  CGFloat familyWidth = width < 400 ? 140 : 180;
+  CGFloat panelY = openUp ? anchorFrame.origin.y - 6 - height : CGRectGetMaxY(anchorFrame) + 6;
+  self.panel = [[UIView alloc] initWithFrame:CGRectMake(MAX(16, parent.bounds.size.width - width - 16), panelY, width, height)];
   self.panel.backgroundColor = [BennuTheme card]; self.panel.layer.cornerRadius = 10; self.panel.clipsToBounds = YES;
   [self addSubview:self.panel];
   UILabel* title = [[UILabel alloc] initWithFrame:CGRectMake(16, 0, width - 32, 40)];
   title.text = @"Visualizations"; title.font = [BennuTheme bold:15]; title.textColor = [BennuTheme subtext];
   [self.panel addSubview:title];
   self.familyTable = [self table]; self.presetTable = [self table];
-  self.familyTable.frame = CGRectMake(0, 40, 180, height - 40);
-  self.presetTable.frame = CGRectMake(180, 40, width - 180, height - 40);
-  UIView* divider = [[UIView alloc] initWithFrame:CGRectMake(180, 40, 1, height - 40)]; divider.backgroundColor = [BennuTheme cardHighlight];
+  self.familyTable.frame = CGRectMake(0, 40, familyWidth, height - 40);
+  self.presetTable.frame = CGRectMake(familyWidth, 40, width - familyWidth, height - 40);
+  UIView* divider = [[UIView alloc] initWithFrame:CGRectMake(familyWidth, 40, 1, height - 40)]; divider.backgroundColor = [BennuTheme cardHighlight];
   [self.panel addSubview:self.familyTable]; [self.panel addSubview:self.presetTable]; [self.panel addSubview:divider];
   [parent addSubview:self];
   self.panel.alpha = 0; self.panel.transform = CGAffineTransformMakeScale(0.96, 0.96);

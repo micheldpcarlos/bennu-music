@@ -53,6 +53,8 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
   [super viewDidLayoutSubviews];
   CGFloat width = self.view.bounds.size.width;
   self.header.frame = CGRectMake(0, 0, width, 100);
+  self.greeting.font = [BennuTheme bold:width < 400 ? 24 : 30];
+  self.greeting.adjustsFontSizeToFitWidth = YES; self.greeting.minimumScaleFactor = 0.7;
   self.greeting.frame = CGRectMake(16, 20, width - 90, 40);
   self.accountButton.frame = CGRectMake(width - 56, 24, 36, 36);
   self.status.frame = CGRectMake(16, 62, width - 32, 36);

@@ -1,15 +1,8 @@
-# Bennu Music
+<p align="center"><img src="native-player/ios/app/icon/AppIcon-152.png" width="96" alt="Bennu Music"></p>
 
-A native Spotify player for the jailbroken iPad 2 (iOS 9.3.5, ARMv7). It is both a
-**Spotify Connect receiver** (pick "Bennu Music" in the Spotify app on your phone) and a
-**standalone player** with a Spotify-style interface: sign in once by scanning a QR code,
-then browse, search and play on the iPad itself, with the screen off, no phone or computer
-in the loop.
+<h1 align="center">Bennu Music</h1>
 
-It is built on [cspot](https://github.com/feelfreelinux/cspot), ported to the 2016-era
-toolchain that iOS 9 requires, with the browsing layer, authentication flow and UIKit app
-written for this project. **A Spotify Premium account is required** (Spotify Connect and
-audio streaming are Premium features).
+<p align="center">Spotify on your old iPad or iPhone. A native player for jailbroken 32-bit devices stuck on iOS 9.</p>
 
 <p align="center">
   <a href="https://github.com/micheldpcarlos/bennu-music/releases/latest"><img src="https://img.shields.io/github/v/release/micheldpcarlos/bennu-music?label=release&color=1DB954" alt="Latest release"></a>
@@ -19,6 +12,38 @@ audio streaming are Premium features).
 </p>
 
 <p align="center"><img src="docs/screenshots/now-playing.png" width="760" alt="Now Playing on an iPad 2"></p>
+
+Bennu Music works two ways. Pick it from the Spotify app on your phone like any **Spotify
+Connect** speaker, or use it as a **standalone player**: sign in once by scanning a QR code,
+then browse, search and play on the device itself, with the screen off, nothing else in the
+loop.
+
+## Requirements
+
+- **A 32-bit iOS device on iOS 9.3.5 or 9.3.6:** iPad 2, iPad 3, iPad 4, iPad mini (1st
+  generation), iPhone 4S, iPod touch (5th generation). The iPhone 5 and 5c on iOS 10.3 should
+  work too. Developed and tested on an iPad 2; phone layouts were checked at phone sizes but
+  not yet on a real phone.
+- **A jailbreak.** The app installs as a system app, which needs a jailbroken device.
+  Jailbreaks exist for every version above (Phœnix for 9.3.5 and 9.3.6, h3lix for 10.x);
+  choosing and applying one is up to you.
+- **A Spotify Premium account.** Spotify Connect and streaming are Premium features. Free
+  accounts cannot sign in or play.
+- **Wi-Fi.** Playback with the screen off keeps Wi-Fi alive; the device otherwise drops it
+  when locked.
+
+## Install
+
+1. On the jailbroken device, download the latest `.deb` from the
+   [Releases page](https://github.com/micheldpcarlos/bennu-music/releases/latest), or copy it
+   over.
+2. Install it with Filza (tap the file, then Install) or over SSH with
+   `dpkg -i app.bennu.music_*.deb`. The icon appears on the home screen.
+3. Open Bennu Music and sign in: scan the QR code with your phone, or play something in
+   Spotify on your phone and pick "Bennu Music" in the devices list.
+
+Updates are the same `.deb` again. To remove it: `dpkg -r app.bennu.music`, or Cydia's
+installed list.
 
 ## Screenshots
 
@@ -30,13 +55,14 @@ audio streaming are Premium features).
 |---|---|
 | ![Album](docs/screenshots/album-playing.png) | ![Library](docs/screenshots/library.png) |
 
-**Signing in.** Scan the QR code with your phone, or pick the iPad in Spotify's device list. The account screen shows who is signed in and controls visibility on the network.
+**Signing in.** Scan the QR code with your phone, or pick the device in Spotify's device list.
+The account screen shows who is signed in and controls visibility on the network.
 
 | Welcome | Account |
 |---|---|
 | ![Welcome](docs/screenshots/welcome.png) | ![Account](docs/screenshots/account.png) |
 
-**Visualizations.** The Windows Media Player 9 catalog, reimplemented for the iPad 2's CPU.
+**Visualizations.** The Windows Media Player 9 catalog, reimplemented for a 2011 CPU.
 
 | Alchemy | Plenoptic: Smokey Circles |
 |---|---|
@@ -55,9 +81,9 @@ audio streaming are Premium features).
 - **Your Library**: Liked Songs, your playlists, recently played albums and artists.
 - **Album, playlist, artist and Liked Songs pages** with Play and Shuffle; long-press a track for Play next, Go to album, Go to artist.
 - **Now Playing**: artwork, scrubber with seek, shuffle, repeat (off / all / one), queue screen, lock-screen and Control Center controls.
-- **Visualizations**: all Windows Media Player 9 built-ins (Alchemy, Ambience, Bars and Waves, Battery, Particle, Plenoptic, Spikes), reimplemented as a video-feedback engine on CoreGraphics, plus a Shuffle-all mode.
-- **Spotify Connect volume** is the iPad's system volume: the phone's slider moves it, the hardware buttons update the phone, and the level is remembered across restarts.
-- **Account**: profile photo and name, in-app sign-out, a switch for visibility on the local network (Spotify Connect pairing).
+- **Visualizations**: all Windows Media Player 9 built-ins (Alchemy, Ambience, Bars and Waves, Battery, Particle, Plenoptic, Spikes) plus a Shuffle-all mode.
+- **Spotify Connect volume** is the device's system volume: the phone's slider moves it, the hardware buttons update the phone, and the level is remembered across restarts.
+- **Account**: profile photo and name, in-app sign-out, a switch for visibility on the local network.
 - **Resilience**: automatic reconnect after network loss, engine restart with backoff, per-feature circuit breakers for Spotify's internal endpoints.
 
 ## How it works
@@ -76,23 +102,24 @@ native-player/
 │   └── app/               The UIKit app (Objective-C, one screen per file under ui/)
 └── toolchain/             (not in git) iOS 9.3 SDK and LLVM 3.8.1 libc++ headers
 scripts/build.sh           Build and sign the bundle
-scripts/install.sh         Install on the iPad over SSH
+scripts/install.sh         Install a development build over SSH
+scripts/package.sh         Produce the .deb and a zip of the bundle
 docs/                      Research notes and project history
 ```
 
-**Engine.** cspot's CLI target runs on a background thread and handles the Spotify Connect
-protocol (Mercury, Spirc, audio key, CDN fetch, Vorbis decoding). It is modified to compile
-with C++14 and the old libc++ (`upstream/cspot-port.patch`), to reconnect on its own, to
-support multi-track loads, seeking, queueing and repeat, and to expose everything through
+**Engine.** The Spotify Connect side is [cspot](https://github.com/feelfreelinux/cspot),
+ported to the 2016-era toolchain that iOS 9 requires (C++14, the old libc++, see
+`upstream/cspot-port.patch`). It runs on a background thread, handles the protocol (Mercury,
+Spirc, audio keys, CDN fetch, Vorbis decoding), reconnects on its own, and was extended with
+multi-track loads, seeking, queueing and repeat. Everything reaches the UI through
 `PlayerBridge`.
 
 **Login.** The welcome screen runs Spotify's device-authorization flow (RFC 8628) and shows
 the verification URL as a QR code. Approving it on a phone yields a token that the engine
-turns into reusable credentials stored in the Keychain. Alternatively the iPad advertises
+turns into reusable credentials stored in the Keychain. Alternatively the device advertises
 itself over mDNS and the Spotify app on the same network can pair with it. Only Spotify's own
-client ids are allowed to use this flow, so the project uses the desktop client id; your own
-developer app would be rejected. See `docs/ux-approach-research.md` for the research behind
-this choice.
+client ids may use this flow, so the project uses the desktop client id; your own developer
+app would be rejected. See `docs/ux-approach-research.md` for the research behind this choice.
 
 **Browsing.** Spotify's public Web API rate-limits this kind of client, so the catalog uses
 the same internal endpoints the official clients use, authenticated with the session's own
@@ -103,31 +130,17 @@ disk. Covers are rewritten to JPEG variants because iOS 9 cannot decode WebP, an
 mosaic covers are composed on the device. See `docs/search-alternatives.md`.
 
 **UI.** Frame-based UIKit (no Auto Layout, no storyboards), icons drawn at runtime,
-images decoded off the main thread. The visualizer renders a half-resolution bitmap that
-the GPU scales (`docs/visualization-research.md` documents the presets).
+images decoded off the main thread, layouts for iPad and for 320-point phone screens. The
+visualizer renders a half-resolution bitmap that the GPU scales
+(`docs/visualization-research.md` documents the presets).
 
-## Install (no computer needed)
+## Building from source
 
-1. Jailbreak the device with [Phœnix](https://phoenixpwn.com/) (iOS 9.3.5 and 9.3.6, 32-bit) and open Cydia once so `dpkg` is set up.
-2. Download the latest `.deb` from the [Releases page](https://github.com/micheldpcarlos/bennu-music/releases/latest) on the iPad (Safari) or copy it over.
-3. Install it with Filza (tap the file, Install) or over SSH: `dpkg -i app.bennu.music_*.deb`. The icon appears after the installer refreshes the home screen.
-4. Open Bennu Music and sign in: scan the QR code with your phone, or play something in Spotify on your phone and pick "Bennu Music" in the devices list.
+You only need this to change the app. Users should install the `.deb` above.
 
-Updates are the same `.deb` again. To remove it: `dpkg -r app.bennu.music`, or Cydia's installed list.
-
-## Requirements
-
-- An iPad 2 (or another ARMv7 device) on iOS 9.3.5, jailbroken, with OpenSSH installed and
-  your SSH public key authorized for `root`.
-- A Spotify Premium account.
-- To build from source only: a Mac with Xcode command-line tools, CMake, Python 3 and [ldid](https://github.com/ProcursusTeam/ldid)
-  (`brew install cmake ldid`).
-- To build from source only: the iOS 9.3 SDK and LLVM 3.8.1 libc++ headers (see Toolchain). Current Xcode cannot target
-  iOS 9 on its own.
-
-## Toolchain
-
-Two inputs are not in the repository because of their licenses and size. Put them here:
+**Prerequisites:** a Mac with Xcode command-line tools, CMake, Python 3 and
+[ldid](https://github.com/ProcursusTeam/ldid) (`brew install cmake ldid`), plus two inputs
+that are not in the repository because of their licenses and size:
 
 | Path | What | Where to get it |
 |---|---|---|
@@ -138,29 +151,17 @@ The build script creates a normalized overlay of the SDK under `native-player/io
 (text stubs rewritten so the modern linker accepts the ARMv7 exports); the original SDK is
 not modified. `IPAD_ORIGINAL_SDK` and `IPAD_CXX_HEADERS` override the paths.
 
-## Build
-
 ```sh
 python3 -m venv native-player/build-venv
 source native-player/build-venv/bin/activate
 pip install -r native-player/ios/requirements-build.txt protobuf grpcio-tools
-scripts/build.sh
+scripts/build.sh                                  # native-player/ios/build/BennuMusic.app
+IPAD=root@<device address> scripts/install.sh     # staged install over SSH, keeps .previous for rollback
+scripts/package.sh                                # dist/*.deb and a zip of the bundle
 ```
 
-The result is `native-player/ios/build/BennuMusic.app`, a bundle with one
-executable named after its hash, signed with `ldid` and a private Keychain access group.
-`scripts/package.sh` then produces the `.deb` and a zip of the bundle under `dist/`.
-
-## Install a development build
-
-```sh
-IPAD=root@<ipad address> scripts/install.sh
-```
-
-The script uploads the bundle next to the installed one, stops the app, swaps the
-directories, refreshes the icon cache and verifies the result. The previous bundle is kept
-as `BennuMusic.app.previous` for rollback. Open "Bennu Music" on the iPad: the
-welcome screen explains both sign-in methods.
+The bundle has one executable named after its hash, signed with `ldid` and a private
+Keychain access group.
 
 ## Developer tools
 
@@ -169,13 +170,14 @@ The app registers the `bennu://` URL scheme so it can be driven over SSH with `u
 | URL | Effect |
 |---|---|
 | `bennu://screenshot`, `bennu://record?frames=24%26ms=150` | Writes `Documents/bennu-screen.png`, or a burst of JPEG frames for GIFs |
+| `bennu://window?w=320%26h=568`, `bennu://rotate?o=portrait` | Preview phone layouts and orientations on an iPad (no parameters restores the screen size) |
 | `bennu://tab?n=0..2`, `bennu://back`, `bennu://scroll?y=800` | Navigation |
 | `bennu://search?q=...`, `bennu://open?uri=spotify:album:...`, `bennu://play?uri=...` | Browsing and playback |
 | `bennu://nowplaying`, `bennu://seek?ms=266000`, `bennu://volume?v=32768`, `bennu://repeat?mode=1`, `bennu://enqueue?uri=...` | Player |
 | `bennu://viz?family=Battery%26preset=brightsphere`, `bennu://vizmenu` | Visualizer |
 | `bennu://setup`, `bennu://signout`, `bennu://visible?on=0`, `bennu://drop` | Account, visibility, simulated connection loss |
 
-Separate query parameters with `%26` when the URL goes through `ssh`; the iPad's shell
+Separate query parameters with `%26` when the URL goes through `ssh`; the device's shell
 splits on `&` and `;`. The engine's log is `Documents/cspot-app.log`. Dropping a
 `Documents/bennu-probe.txt` (one URL per line) makes the engine fetch each URL with the
 session token at startup, which is how the catalog endpoints were explored.
@@ -189,7 +191,6 @@ kind without a rebuild.
   do not appear. Spotify's dedicated search endpoint rejects this client.
 - Spotify changes its internal endpoints a few times a year. The catalog degrades
   per-feature (a screen says browsing is unavailable; Spotify Connect keeps working).
-- Landscape layouts were only spot-checked.
 - The visualizer presets follow the WMP wiki's descriptions; the original gallery images
   were not available, so they are interpretations.
 
@@ -200,8 +201,9 @@ kind without a rebuild.
 - `docs/visualization-research.md`: WMP 9 preset catalog and engine notes.
 - `docs/history/`: dated checkpoints from the port, including the earlier Linux-boot route.
 - `native-player/upstream/VENDOR.md`: provenance of vendored code and the port patches.
-- `THIRD_PARTY.md`, `CONTRIBUTING.md`.
+- `THIRD_PARTY.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`.
 
 ## License
 
-GPL-3.0-or-later. See `LICENSE` and `THIRD_PARTY.md`. Not affiliated with Spotify.
+GPL-3.0-or-later. See `LICENSE` and `THIRD_PARTY.md`. Not affiliated with or endorsed by
+Spotify.

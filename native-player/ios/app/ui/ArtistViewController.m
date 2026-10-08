@@ -70,12 +70,14 @@ enum { SectionPopular = 0, SectionAlbums, SectionSingles, SectionAbout, SectionC
 }
 - (void)layoutHeader {
   CGFloat width = self.view.bounds.size.width;
-  self.header.frame = CGRectMake(0, 0, width, 260);
-  self.portrait.frame = CGRectMake(24, 16, 180, 180); self.portrait.layer.cornerRadius = 90;
-  self.titleLabel.frame = CGRectMake(228, 40, width - 252, 56);
-  self.status.frame = CGRectMake(228, 100, width - 252, 20);
-  self.playButton.frame = CGRectMake(228, 132, 56, 56);
-  self.shuffleButton.frame = CGRectMake(300, 136, 48, 48);
+  BOOL narrow = width < 600;   // phones: smaller portrait, text beside it
+  CGFloat size = narrow ? 120 : 180, x = 24 + size + (narrow ? 16 : 24);
+  self.header.frame = CGRectMake(0, 0, width, narrow ? 200 : 260);
+  self.portrait.frame = CGRectMake(24, 16, size, size); self.portrait.layer.cornerRadius = size / 2;
+  self.titleLabel.frame = CGRectMake(x, narrow ? 16 : 40, width - x - 16, 56);
+  self.status.frame = CGRectMake(x, narrow ? 74 : 100, width - x - 16, 20);
+  self.playButton.frame = CGRectMake(x, narrow ? 100 : 132, 56, 56);
+  self.shuffleButton.frame = CGRectMake(x + 72, narrow ? 104 : 136, 48, 48);
   self.table.tableHeaderView = self.header;
 }
 - (void)viewDidLayoutSubviews { [super viewDidLayoutSubviews]; [self layoutHeader]; }

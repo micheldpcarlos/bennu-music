@@ -29,7 +29,7 @@ def main():
     master = Image.new("RGB", (1024, 1024), bg)
     master.paste(grown, ((1024 - 1086) // 2, (1024 - 1086) // 2))
     master.save(HERE / "AppIcon-1024.png")
-    for size in (29, 40, 58, 76, 80, 152):
+    for size in (29, 40, 58, 76, 80, 120, 152):
         master.resize((size, size), Image.LANCZOS).save(HERE / f"AppIcon-{size}.png")
     print(f"disc centre=({cx:.0f},{cy:.0f}) r={r:.0f}; corner={master.getpixel((2, 2))} disc={master.getpixel((512, 60))} icon set written")
 
