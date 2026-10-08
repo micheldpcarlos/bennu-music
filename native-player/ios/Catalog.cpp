@@ -124,6 +124,10 @@ Catalog::Catalog(std::shared_ptr<cspot::Context> context, std::string dir)
     : context_(std::move(context)), client(new SpclientClient(context_)), client2(new SpclientClient(context_)), cacheDir(std::move(dir)) {
   mkdir(cacheDir.c_str(), 0700);
   mkdir((cacheDir + "/tracks").c_str(), 0700);
+  try {
+    std::ifstream file(cacheDir + "/covers.json");
+    if (file) { JSON saved; file >> saved; if (saved.is_object()) for (auto it = saved.begin(); it != saved.end(); ++it) if (it->is_string()) coverCache[it.key()] = it->get<std::string>(); }
+  } catch (...) { coverCache.clear(); }
 }
 Catalog::~Catalog() = default;
 
@@ -507,6 +511,7 @@ std::string Catalog::playlistCover(const std::string& id) {
   std::lock_guard<std::mutex> lock(cacheMutex);
   if (coverCache.size() > 500) coverCache.clear();
   coverCache[id] = cover;
+  try { std::ofstream file(cacheDir + "/covers.json", std::ios::trunc); file << JSON(coverCache).dump(); } catch (...) {}
   return cover;
 }
 void Catalog::playlists(const Publish& publish) {
