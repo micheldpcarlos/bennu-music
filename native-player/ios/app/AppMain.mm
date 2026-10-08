@@ -87,6 +87,21 @@ static void startEngine() {
   }
 }
 
+#include <execinfo.h>
+#include <csignal>
+#include <mach-o/dyld.h>
+static void bennuUncaughtException(NSException* exception) {
+  std::fprintf(stderr, "CRASH: uncaught %s: %s slide=0x%lx\n", exception.name.UTF8String, exception.reason.UTF8String, (unsigned long)_dyld_get_image_vmaddr_slide(0));
+  for (NSString* line in exception.callStackSymbols) std::fprintf(stderr, "CRASH:   %s\n", line.UTF8String);
+  std::fflush(stderr);
+}
+static void bennuFatalSignal(int sig) {
+  std::fprintf(stderr, "CRASH: signal %d slide=0x%lx\n", sig, (unsigned long)_dyld_get_image_vmaddr_slide(0));
+  void* frames[64]; int count = backtrace(frames, 64);
+  backtrace_symbols_fd(frames, count, fileno(stderr));
+  std::fflush(stderr);
+  std::signal(sig, SIG_DFL); raise(sig);
+}
 @interface IPadPlayerDelegate : UIResponder <UIApplicationDelegate>
 @property(nonatomic, strong) UIWindow* window;
 @end
@@ -122,6 +137,9 @@ static void startEngine() {
   std::setvbuf(stdout, nullptr, _IOLBF, 0);
   std::setvbuf(stderr, nullptr, _IOLBF, 0);
   std::fprintf(stderr, "APP: launched; log=%s\n", log.fileSystemRepresentation);
+  // There is no crash reporter on these devices: write the reason and a backtrace to the log.
+  NSSetUncaughtExceptionHandler(&bennuUncaughtException);
+  for (int sig : {SIGSEGV, SIGBUS, SIGILL, SIGABRT, SIGFPE}) std::signal(sig, bennuFatalSignal);
 
   self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
   self.window.rootViewController = [[MainTabController alloc] init];

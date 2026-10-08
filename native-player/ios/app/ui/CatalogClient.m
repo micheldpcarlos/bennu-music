@@ -6,14 +6,23 @@
 @property(nonatomic) uint64_t revision;
 @property(nonatomic, copy) void (^update)(NSDictionary*, BOOL);
 @end
-@implementation CatalogRequest
-- (void)cancel { self.update = nil; if (self.identifier) ipad_catalog_forget(self.identifier); self.identifier = 0; }
-- (void)dealloc { [self cancel]; }
-@end
 @interface CatalogClient ()
-@property(nonatomic, strong) NSMutableArray* pending;  // CatalogRequest (weak wrappers)
+@property(nonatomic, strong) NSMutableArray* pending;  // CatalogRequest wrapped in non-retaining NSValues
 @property(nonatomic, strong) NSTimer* timer;
 @property(nonatomic) char* buffer;
+- (void)drop:(CatalogRequest*)request;
+@end
+@implementation CatalogRequest
+- (void)cancel {
+  self.update = nil;
+  if (self.identifier) ipad_catalog_forget(self.identifier);
+  self.identifier = 0;
+  // The pending list does not retain requests, so a cancelled or freed request must leave
+  // it here; otherwise the next poll touches dead memory (that was an intermittent crash
+  // while typing in Search, when each new query released the previous request).
+  [[CatalogClient shared] drop:self];
+}
+- (void)dealloc { [self cancel]; }
 @end
 static const uint32_t kBufferSize = 1024 * 1024;
 @implementation CatalogClient
@@ -37,6 +46,10 @@ static const uint32_t kBufferSize = 1024 * 1024;
   [self.pending addObject:[NSValue valueWithNonretainedObject:request]];
   if (!self.timer) self.timer = [NSTimer scheduledTimerWithTimeInterval:0.25 target:self selector:@selector(poll) userInfo:nil repeats:YES];
   return request;
+}
+- (void)drop:(CatalogRequest*)request {
+  NSValue* box = [NSValue valueWithNonretainedObject:request];
+  [self.pending removeObject:box];
 }
 - (void)poll {
   NSMutableArray* finished = [NSMutableArray array];

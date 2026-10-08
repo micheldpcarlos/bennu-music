@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 (2026-10-08)
+
+- Fixes an intermittent crash while typing in Search: a replaced request stayed in the
+  catalog client's polling list after it was freed.
+- Crashes now write the exception or signal and a backtrace to `Documents/cspot-app.log`,
+  since these devices have no crash reporter.
+
 ## 0.2.0 (2026-10-08)
 
 - Runs on iPhone and iPod touch as well as iPad: iPhone 4S, iPhone 5, iPhone 5c and iPod
