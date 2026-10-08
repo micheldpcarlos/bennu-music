@@ -344,7 +344,18 @@ int main(int argc, char** argv) {
       auto catalog = std::make_shared<ipad_player::Catalog>(ctx);
       ipad_player::setCatalogService([catalog](const std::string& kind, const std::string& argument, const ipad_player::CatalogPublish& publish) {
         if (kind == "search") catalog->search(argument, publish);
-        else if (kind == "pathfinder") { std::string hash = argument == "refresh" ? catalog->pathfinderRefresh() : ""; publish("{\"status\":\"" + catalog->pathfinderStatus() + "\",\"loading\":false}", true); (void)hash; }
+        else if (kind == "homefeed") catalog->homeFeed(publish);
+        else if (kind == "library") catalog->library(publish);
+        else if (kind == "pathfinder") {
+          // "" -> status, "refresh" -> force a hash refresh, "op:<name>:<variables json>" -> raw response (development)
+          if (argument.compare(0, 3, "op:") == 0) {
+            auto colon = argument.find(':', 3);
+            publish(catalog->pathfinderRaw(argument.substr(3, colon == std::string::npos ? std::string::npos : colon - 3), colon == std::string::npos ? "" : argument.substr(colon + 1)), true);
+          } else {
+            if (argument == "refresh") catalog->pathfinderRefresh();
+            publish("{\"status\":\"" + catalog->pathfinderStatus() + "\",\"loading\":false}", true);
+          }
+        }
         else if (kind == "album") catalog->album(argument, publish);
         else if (kind == "artist") catalog->artist(argument, publish);
         else if (kind == "playlist") catalog->playlist(argument, publish);

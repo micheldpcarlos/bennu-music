@@ -10,6 +10,11 @@
 @property(nonatomic, strong) CatalogRequest* recentRequest;
 @property(nonatomic, strong) NSArray* playlists;
 @property(nonatomic, strong) NSArray* recent;
+@property(nonatomic, strong) CatalogRequest* libraryRequest;
+@property(nonatomic, strong) NSArray* libraryItems;   // everything saved, from the web player service; nil -> fallback shelves
+@property(nonatomic, strong) UIScrollView* pills;
+@property(nonatomic, strong) NSArray* pillButtons;
+@property(nonatomic) NSInteger filter;   // 0 all, 1 playlists, 2 albums, 3 artists
 @property(nonatomic, strong) UIView* header;
 @property(nonatomic, strong) UILabel* titleLabel;
 @property(nonatomic, strong) UILabel* status;
@@ -26,7 +31,23 @@
   self.header = [[UIView alloc] init];
   self.titleLabel = [[UILabel alloc] init]; self.titleLabel.font = [BennuTheme bold:30]; self.titleLabel.textColor = [BennuTheme text]; self.titleLabel.text = @"Your Library";
   self.status = [[UILabel alloc] init]; self.status.font = [BennuTheme regular:14]; self.status.textColor = [BennuTheme subtext];
-  [self.header addSubview:self.titleLabel]; [self.header addSubview:self.status];
+  self.pills = [[UIScrollView alloc] init]; self.pills.showsHorizontalScrollIndicator = NO;
+  NSMutableArray* pillButtons = [NSMutableArray array]; CGFloat x = 0;
+  NSArray* names = @[@"All", @"Playlists", @"Albums", @"Artists"];
+  for (NSUInteger i = 0; i < names.count; i++) {
+    UIButton* pill = [UIButton buttonWithType:UIButtonTypeCustom];
+    [pill setTitle:names[i] forState:UIControlStateNormal];
+    pill.titleLabel.font = [BennuTheme regular:14];
+    pill.layer.cornerRadius = 16; pill.layer.borderWidth = 1; pill.layer.borderColor = [BennuTheme cardHighlight].CGColor;
+    pill.contentEdgeInsets = UIEdgeInsetsMake(0, 16, 0, 16);
+    [pill sizeToFit]; pill.frame = CGRectMake(x, 0, pill.frame.size.width, 32); x += pill.frame.size.width + 8;
+    pill.tag = (NSInteger)i;
+    [pill addTarget:self action:@selector(pillTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [self.pills addSubview:pill]; [pillButtons addObject:pill];
+  }
+  self.pills.contentSize = CGSizeMake(x, 32); self.pillButtons = pillButtons; self.pills.hidden = YES;
+  [self.header addSubview:self.titleLabel]; [self.header addSubview:self.status]; [self.header addSubview:self.pills];
+  [self stylePills];
   self.table.tableHeaderView = self.header;
   [self rebuild];
   [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(playerChanged) name:BennuTrackChanged object:nil];
@@ -36,18 +57,28 @@
 - (void)viewDidLayoutSubviews {
   [super viewDidLayoutSubviews];
   CGFloat width = self.view.bounds.size.width;
-  self.header.frame = CGRectMake(0, 0, width, 90);
+  BOOL filters = !self.pills.hidden;
+  self.header.frame = CGRectMake(0, 0, width, filters ? 130 : 90);
   self.titleLabel.frame = CGRectMake(16, 20, width - 32, 40);
   self.status.frame = CGRectMake(16, 62, width - 32, 20);
+  self.pills.frame = CGRectMake(16, 88, width - 32, 32);
   self.table.tableHeaderView = self.header;
 }
 - (void)playerChanged {
   if ([PlayerModel shared].ready && !self.loadedOnce) { self.loadedOnce = YES; [self load]; }
-  if ([PlayerModel shared].snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; self.playlists = nil; self.recent = nil; [self rebuild]; }
+  if ([PlayerModel shared].snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; self.playlists = nil; self.recent = nil; self.libraryItems = nil; self.pills.hidden = YES; [self rebuild]; }
 }
 - (void)load {
   self.status.text = @"Loading…";
   __weak LibraryViewController* weakSelf = self;
+  // Preferred: everything saved, with types, from the web player service. The rootlist and
+  // recently played requests below stay as the fallback when it is paused or fails.
+  self.libraryRequest = [[CatalogClient shared] request:@"library" argument:@"" update:^(NSDictionary* json, BOOL done) {
+    LibraryViewController* owner = weakSelf; if (!owner) return;
+    if (json[@"error"] || ![json[@"items"] isKindOfClass:NSArray.class] || [json[@"items"] count] == 0) return;
+    owner.libraryItems = json[@"items"]; owner.pills.hidden = NO; owner.status.text = @"";
+    [owner.view setNeedsLayout]; [owner rebuild];
+  }];
   self.profileRequest = [[CatalogClient shared] request:@"playlists" argument:@"" update:^(NSDictionary* json, BOOL done) {
     LibraryViewController* owner = weakSelf; if (!owner) return;
     NSMutableArray* list = [NSMutableArray array];
@@ -70,7 +101,27 @@
     owner.recent = list; owner.status.text = done ? @"" : @"Loading…"; [owner rebuild];
   }];
 }
+- (void)stylePills {
+  for (UIButton* pill in self.pillButtons) {
+    BOOL on = pill.tag == self.filter;
+    pill.backgroundColor = on ? [BennuTheme green] : [BennuTheme card];
+    [pill setTitleColor:on ? [UIColor blackColor] : [BennuTheme text] forState:UIControlStateNormal];
+  }
+}
+- (void)pillTapped:(UIButton*)pill { self.filter = pill.tag; [self stylePills]; [self rebuild]; }
 - (void)rebuild {
+  if (self.libraryItems) {
+    NSString* wanted = @[@"", @"playlist", @"album", @"artist"][self.filter];
+    NSMutableArray* list = [NSMutableArray array]; BOOL hasCollection = NO;
+    for (NSDictionary* item in self.libraryItems) {
+      NSString* type = item[@"type"];
+      if ([type isEqualToString:@"collection"]) hasCollection = YES;
+      if (wanted.length && !([type isEqualToString:wanted] || (self.filter == 1 && [type isEqualToString:@"collection"]))) continue;
+      [list addObject:item];
+    }
+    if (!hasCollection && self.filter <= 1) [list insertObject:@{@"uri": @"spotify:user:me:collection", @"name": @"Liked Songs", @"subtitle": @"Playlist", @"artwork": @"", @"type": @"collection"} atIndex:0];
+    self.items = list; [self.table reloadData]; return;
+  }
   NSMutableArray* items = [NSMutableArray arrayWithObject:@{@"uri": @"spotify:user:me:collection", @"name": @"Liked Songs", @"subtitle": @"Playlist", @"artwork": @"", @"type": @"collection"}];
   NSMutableSet* seen = [NSMutableSet set];
   for (NSDictionary* item in [self.playlists arrayByAddingObjectsFromArray:self.recent ?: @[]] ?: self.recent) {

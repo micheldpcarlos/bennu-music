@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 (2026-10-08)
+
+- **Home is Spotify's own Home.** Daily Mixes, Made For You, Jump back in, Recently played,
+  Recommended Stations, Your top mixes and the "For fans of" shelves come from the web player's
+  Home feed, with Spotify's greeting. The previous derived shelves remain as the fallback.
+- **Your Library shows everything saved**: playlists, albums and followed artists, with
+  All / Playlists / Albums / Artists filters and Liked Songs with its count. The rootlist and
+  recently played remain as the fallback.
+- The search service now discovers hashes for every web player operation in one pass, so new
+  features can be added without touching the hash machinery; `config/pathfinder.json` is a map.
+- User playlist covers from the web player's CDN are rewritten to the JPEG form iOS 9 can decode.
+
 ## 0.3.0 (2026-10-08)
 
 - Search now uses the web player's search service and returns songs, artists, albums and

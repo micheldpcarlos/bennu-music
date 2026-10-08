@@ -376,7 +376,18 @@ void Catalog::context(const std::string& uri, const Publish& publish) {
 }
 
 std::string Catalog::pathfinderStatus() { return pathfinder->status(); }
-std::string Catalog::pathfinderRefresh() { return pathfinder->refreshHash(true); }
+std::string Catalog::pathfinderRefresh() { return pathfinder->refreshHashes(true); }
+std::string Catalog::pathfinderRaw(const std::string& op, const std::string& variablesJSON) { return pathfinder->raw(op, variablesJSON); }
+void Catalog::homeFeed(const Publish& publish) {
+  if (!pathfinder->available()) throw std::runtime_error("search service paused");
+  auto feed = pathfinder->home(); feed["loading"] = false;
+  publish(feed.dump(), true);
+}
+void Catalog::library(const Publish& publish) {
+  if (!pathfinder->available()) throw std::runtime_error("search service paused");
+  auto lib = pathfinder->library(200); lib["loading"] = false;
+  publish(lib.dump(), true);
+}
 void Catalog::search(const std::string& query, const Publish& publish) {
   // Preferred path: the web player's search, which answers with tracks, artists, albums and
   // playlists in one call and needs no metadata hydration. Falls through to the
@@ -758,4 +769,5 @@ void Catalog::profile(const Publish& publish) {
     }
   publish(JSON{{"name", str(document, "name", 128)}, {"image", imageURL(str(document, "image_url", 2048))}, {"playlists", playlists}, {"loading", false}}.dump(), true);
 }
-}
+std::string canonicalImageURL(const std::string& idOrUrl) { return imageURL(idOrUrl); }
+}  // namespace ipad_player

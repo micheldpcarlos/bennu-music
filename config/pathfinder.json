@@ -1,5 +1,7 @@
 {
   "searchDesktop": "eef7cc54888d91bdd6802623477873caa3948ae173a0c34fd86827b267e94c03",
+  "home": "5fb7da7a03ee2776c0670856609cb85a189a3cecc36cc160b91cde79063b9cf1",
+  "libraryV3": "390c78e5b951029bad359785e69b07b536a509c581cbcd0aded5e5067f187455",
   "updated": "2026-10-08",
-  "note": "Persisted-query hash of the web player's searchDesktop operation. The app fetches this file at search time when its cached hash stops working; update it when Spotify ships a new web player."
+  "note": "Persisted-query hashes of web player operations. The app fetches this file when a cached hash stops working; update it when Spotify ships a new web player. Keys are operation names; only 64-hex values are used."
 }

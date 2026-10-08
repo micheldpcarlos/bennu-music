@@ -21,6 +21,9 @@ class Catalog {
   void search(const std::string& query, const Publish& publish);
   std::string pathfinderStatus();
   std::string pathfinderRefresh();
+  std::string pathfinderRaw(const std::string& op, const std::string& variablesJSON);
+  void homeFeed(const Publish& publish);           // the web player's personalized Home sections
+  void library(const Publish& publish);            // everything saved: playlists, albums, artists
   void album(const std::string& id, const Publish& publish);
   void artist(const std::string& id, const Publish& publish);
   void playlist(const std::string& id, const Publish& publish);
@@ -54,6 +57,7 @@ class Catalog {
   std::mutex cacheMutex;
   std::map<std::string, std::string> memoryCache;  // uri -> track json
 };
+std::string canonicalImageURL(const std::string& idOrUrl);   // i.scdn.co JPEG form of any Spotify image id or CDN URL
 std::string base62FromHex(const std::string& hex);
 std::string hexFromBase62(const std::string& id);
 }

@@ -1,39 +1,44 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <nlohmann/json.hpp>
 namespace cspot { struct Context; }
 namespace ipad_player {
-// Search through the web player's GraphQL endpoint ("pathfinder"), which returns tracks,
-// artists, albums and playlists directly. It needs two things Spotify rotates on its own
-// schedule: the persisted-query hash of the "searchDesktop" operation, and a client token.
+// The web player's GraphQL service ("pathfinder"): search, the personalized Home feed, the
+// full library, and more. Each operation is identified by a persisted-query hash that Spotify
+// rotates with web player releases, and requests carry a client token.
 //
-// Hash sources, in order: the cached value from the last run, a small config file in the
-// project's GitHub repository, scraping the web player's JavaScript on the device, and the
-// value compiled into this build. A "persisted query not found" answer triggers a refresh
-// and one retry. Three consecutive failures pause this path for ten minutes so the caller
-// falls back to the context-resolve search without delay.
+// Hash sources, in order: the values cached from the last run, a small config file in the
+// project's GitHub repository, scraping the web player's JavaScript on the device (about two
+// seconds on an iPad 2), and the values compiled into this build. A "PersistedQueryNotFound"
+// answer refreshes and retries once. Three consecutive failures pause the service for ten
+// minutes so callers fall back to the spclient routes without delay.
 class Pathfinder {
  public:
   explicit Pathfinder(std::shared_ptr<cspot::Context> context);
-  bool available();                                 // not paused by the breaker, not switched off
-  nlohmann::json search(const std::string& query);  // {tracks, artists, albums, playlists}; throws on failure
-  std::string refreshHash(bool force);              // for the dev URL; returns the hash in use
-  void refreshIfStale();                            // weekly background check (remote config, then scrape)
-  std::string status();                             // one-line summary for logs and the UI
+  bool available();                                                      // not paused, not switched off
+  nlohmann::json run(const std::string& op, const nlohmann::json& variables);   // returns response["data"]; throws on failure
+  nlohmann::json search(const std::string& query);                       // {tracks, artists, albums, playlists}
+  nlohmann::json home();                                                 // {sections:[{title, items:[entity]}]}
+  nlohmann::json library(int limit);                                     // {items:[entity]} with type playlist/album/artist/collection
+  std::string raw(const std::string& op, const std::string& variablesJSON);  // dev: full response text
+  std::string refreshHashes(bool force);                                 // returns a summary line
+  void refreshIfStale();                                                 // weekly background check
+  std::string status();
  private:
-  nlohmann::json query(const std::string& text, const std::string& hash, int& httpStatus);
-  nlohmann::json parse(const nlohmann::json& response);
+  std::string hashFor(const std::string& op);
+  nlohmann::json request(const std::string& op, const nlohmann::json& variables, const std::string& hash, int& httpStatus, std::string& rawOut);
   std::string clientToken();
   std::string fetchClientToken();
-  std::string remoteHash();
-  std::string scrapeHash();
+  std::map<std::string, std::string> remoteHashes();
+  std::map<std::string, std::string> scrapeHashes();
   void loadState(); void saveState();
   void recordFailure(const std::string& why); void recordSuccess();
   std::shared_ptr<cspot::Context> context_;
   std::mutex mutex_;
-  nlohmann::json state_;   // hash, hashSource, hashAt, clientToken, clientTokenExpires, failures, pausedUntil, lastScrape
+  nlohmann::json state_;   // hashes{op:hash}, hashSource, hashAt, lastScrape, clientToken, clientTokenExpires, clientTokenRetryAt, failures, pausedUntil
 };
 }

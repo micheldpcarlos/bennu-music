@@ -114,8 +114,12 @@ BOOL BennuHandleURL(NSURL* url) {
   } else if ([action isEqualToString:@"pathfinder"]) {
     // bennu://pathfinder (status) or bennu://pathfinder?action=refresh (force a hash discovery)
     static CatalogRequest* probe; 
-    probe = [[CatalogClient shared] request:@"pathfinder" argument:[query[@"action"] isEqualToString:@"refresh"] ? @"refresh" : @"" update:^(NSDictionary* json, BOOL done) {
-      fprintf(stderr, "DEV: pathfinder %s\n", [json[@"status"] isKindOfClass:NSString.class] ? [json[@"status"] UTF8String] : [json[@"error"] isKindOfClass:NSString.class] ? [json[@"error"] UTF8String] : "?");
+    NSString* argument = [query[@"action"] isEqualToString:@"refresh"] ? @"refresh" : @"";
+    if ([query[@"op"] isKindOfClass:NSString.class]) argument = [NSString stringWithFormat:@"op:%@:%@", query[@"op"], query[@"vars"] ?: @""];   // raw query; body saved to Documents/bennu-pathfinder-<op>.json
+    probe = [[CatalogClient shared] request:@"pathfinder" argument:argument update:^(NSDictionary* json, BOOL done) {
+      if (!done) return;
+      fprintf(stderr, "DEV: pathfinder %s keys=%s\n", [json[@"status"] isKindOfClass:NSString.class] ? [json[@"status"] UTF8String] : [json[@"error"] isKindOfClass:NSString.class] ? [json[@"error"] UTF8String] : "ok",
+          [[json.allKeys componentsJoinedByString:@","] UTF8String]);
     }];
   } else if ([action isEqualToString:@"seek"]) {
     ipad_player_seek((uint32_t)[query[@"ms"] longLongValue]);

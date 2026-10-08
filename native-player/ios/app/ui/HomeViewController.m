@@ -13,6 +13,8 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
 @property(nonatomic, strong) NSArray* radios;
 @property(nonatomic, strong) NSArray* releases;
 @property(nonatomic, strong) CatalogRequest* homeRequest;
+@property(nonatomic, strong) CatalogRequest* feedRequest;
+@property(nonatomic, strong) NSArray* feed;   // Spotify's own Home sections [{title, items}] when the web player service answers
 @property(nonatomic, strong) CatalogRequest* recentRequest;
 @property(nonatomic, strong) CatalogRequest* profileRequest;
 @property(nonatomic, strong) CatalogRequest* playlistsRequest;
@@ -64,7 +66,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
   PlayerModel* model = [PlayerModel shared];
   IPadPlayerSnapshot snapshot = model.snapshot;
   if (snapshot.state == IPadReady && !self.loadedOnce) { self.loadedOnce = YES; [self load]; }
-  if (snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; self.radios = nil; self.releases = nil; [self.accountButton setImage:[BennuTheme icon:@"account" size:30 color:[BennuTheme text]] forState:UIControlStateNormal]; self.recent = nil; self.playlists = nil; [self renderGreeting]; [self.table reloadData]; }
+  if (snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; self.radios = nil; self.releases = nil; self.feed = nil; [self.accountButton setImage:[BennuTheme icon:@"account" size:30 color:[BennuTheme text]] forState:UIControlStateNormal]; self.recent = nil; self.playlists = nil; [self renderGreeting]; [self.table reloadData]; }
   if (snapshot.state == IPadFailed) self.status.text = [NSString stringWithFormat:@"%s Close and reopen the app to reconnect.", snapshot.error];
   else if (snapshot.reconnecting) self.status.text = @"Connection lost. Reconnecting to Spotify…";
   else if (snapshot.state == IPadConnecting) self.status.text = @"Connecting to Spotify…";
@@ -96,6 +98,17 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
       [owner renderGreeting];
       owner.greeting.text = [NSString stringWithFormat:@"%@, %@", owner.greeting.text, [name componentsSeparatedByString:@" "].firstObject];
     }
+  }];
+  self.feedRequest = [[CatalogClient shared] request:@"homefeed" argument:@"" update:^(NSDictionary* json, BOOL done) {
+    HomeViewController* owner = weakSelf; if (!owner) return;
+    if (json[@"error"] || ![json[@"sections"] isKindOfClass:NSArray.class] || [json[@"sections"] count] == 0) return;   // keep the derived shelves
+    owner.feed = json[@"sections"];
+    NSString* greeting = json[@"greeting"];
+    if ([greeting isKindOfClass:NSString.class] && greeting.length) {
+      NSString* name = [PlayerModel shared].accountName;
+      owner.greeting.text = name.length ? [NSString stringWithFormat:@"%@, %@", greeting, [name componentsSeparatedByString:@" "].firstObject] : greeting;
+    }
+    [owner.table reloadData];
   }];
   self.homeRequest = [[CatalogClient shared] request:@"home" argument:@"" update:^(NSDictionary* json, BOOL done) {
     HomeViewController* owner = weakSelf; if (!owner) return;
@@ -137,15 +150,16 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
   setup.modalPresentationStyle = UIModalPresentationFullScreen;
   [self presentViewController:setup animated:YES completion:nil];
 }
-- (NSInteger)numberOfSectionsInTableView:(UITableView*)table { return HomeCount; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView*)table { return self.feed ? (NSInteger)self.feed.count : HomeCount; }
 - (NSArray*)itemsFor:(NSInteger)section {
+  if (self.feed) { NSDictionary* shelf = section < (NSInteger)self.feed.count ? self.feed[section] : nil; return [shelf[@"items"] isKindOfClass:NSArray.class] ? shelf[@"items"] : @[]; }
   switch (section) { case HomeRecent: return self.recent; case HomePlaylists: return self.playlists; case HomeRadios: return self.radios; default: return self.releases; }
 }
 - (NSInteger)tableView:(UITableView*)table numberOfRowsInSection:(NSInteger)section { return [self itemsFor:section].count ? 1 : 0; }
 - (CGFloat)tableView:(UITableView*)table heightForHeaderInSection:(NSInteger)section { return [self tableView:table numberOfRowsInSection:section] ? 48 : 0; }
 - (UIView*)tableView:(UITableView*)table viewForHeaderInSection:(NSInteger)section {
   SectionHeader* header = [table dequeueReusableHeaderFooterViewWithIdentifier:@"header"];
-  header.titleLabel.text = @[@"Recently played", @"Your playlists", @"Made for you", @"New releases for you"][section];
+  header.titleLabel.text = self.feed ? (section < (NSInteger)self.feed.count ? self.feed[section][@"title"] : @"") : @[@"Recently played", @"Your playlists", @"Made for you", @"New releases for you"][section];
   return header;
 }
 - (CGFloat)tableView:(UITableView*)table heightForRowAtIndexPath:(NSIndexPath*)path { return [ShelfCell height]; }

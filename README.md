@@ -74,9 +74,9 @@ The account screen shows who is signed in and controls visibility on the network
 
 ## What it does
 
-- **Home**: greeting, Recently played, Your playlists, Made for you (artist radios), New releases.
+- **Home**: Spotify's own Home feed: Daily Mixes, Made For You, Jump back in, Recently played, Recommended Stations, Your top mixes, "For fans of" shelves.
 - **Search**: browse grid of genres, live search with Songs / Artists / Albums / Playlists filters, recent searches.
-- **Your Library**: Liked Songs, your playlists, recently played albums and artists.
+- **Your Library**: everything you saved, with Playlists / Albums / Artists filters, and Liked Songs.
 - **Album, playlist, artist and Liked Songs pages** with Play and Shuffle; long-press a track for Play next, Go to album, Go to artist.
 - **Now Playing**: artwork, scrubber with seek, shuffle, repeat (off / all / one), queue screen, lock-screen and Control Center controls.
 - **Visualizations**: all Windows Media Player 9 built-ins (Alchemy, Ambience, Bars and Waves, Battery, Particle, Plenoptic, Spikes) plus a Shuffle-all mode.
@@ -127,14 +127,16 @@ and `extended-metadata` (track details, batched 50 at a time), `recently-played`
 disk. Covers are rewritten to JPEG variants because iOS 9 cannot decode WebP, and
 mosaic covers are composed on the device. See `docs/search-alternatives.md`.
 
-**Search** goes through the web player's search service (`pathfinder`), which answers with
-songs, artists, albums and playlists in one call. It identifies the query by a hash that
-Spotify changes when it ships a new web player. `Pathfinder.cpp` keeps the last working
-hash and, when it stops working, refreshes it from `config/pathfinder.json` in this
-repository, then by scraping the web player's JavaScript on the device, then from the value
-compiled into the release; if everything fails, search falls back to the older track-only
-path. Updating `config/pathfinder.json` therefore fixes every installed app without a
-release.
+**Search, Home and Library** go through the web player's GraphQL service (`pathfinder`):
+`searchDesktop` answers with songs, artists, albums and playlists in one call, `home` returns
+Spotify's personalized Home sections, and `libraryV3` lists everything saved with its type.
+Each operation is identified by a hash that Spotify changes when it ships a new web player.
+`Pathfinder.cpp` keeps the last working hashes and, when one stops working, refreshes them
+from `config/pathfinder.json` in this repository, then by scraping the web player's
+JavaScript on the device (about two seconds, every operation at once), then from the values
+compiled into the release; if everything fails, each screen falls back to the spclient
+routes it used before. Updating `config/pathfinder.json` therefore fixes every installed
+app without a release.
 
 **UI.** Frame-based UIKit (no Auto Layout, no storyboards), icons drawn at runtime,
 images decoded off the main thread, layouts for iPad and for 320-point phone screens. The
@@ -182,7 +184,7 @@ The app registers the `bennu://` URL scheme so it can be driven over SSH with `u
 | `bennu://search?q=...`, `bennu://open?uri=spotify:album:...`, `bennu://play?uri=...` | Browsing and playback |
 | `bennu://nowplaying`, `bennu://seek?ms=266000`, `bennu://volume?v=32768`, `bennu://repeat?mode=1`, `bennu://enqueue?uri=...` | Player |
 | `bennu://viz?family=Battery%26preset=brightsphere`, `bennu://vizmenu` | Visualizer |
-| `bennu://pathfinder`, `bennu://pathfinder?action=refresh` | Log the search service's hash status, or force a hash refresh |
+| `bennu://pathfinder`, `bennu://pathfinder?action=refresh`, `bennu://pathfinder?op=home%26vars=<json>` | Log the service's hash status, force a hash refresh, or run an operation raw (body saved to Documents) |
 | `bennu://setup`, `bennu://signout`, `bennu://visible?on=0`, `bennu://drop` | Account, visibility, simulated connection loss |
 
 Separate query parameters with `%26` when the URL goes through `ssh`; the device's shell
@@ -199,8 +201,9 @@ search service save its last response to `bennu-pathfinder-last.json`.
 - When the device is locked and nothing is playing, iOS turns Wi-Fi off after a few minutes,
   so it disappears from your phone's Connect list until you wake it. While music plays, the
   screen can stay off indefinitely.
-- Search depends on the web player's query hash (see How it works); when Spotify rotates it,
-  playlists disappear from results until the app refreshes the hash, which it does by itself.
+- Search, Home and Library depend on the web player's query hashes (see How it works); when
+  Spotify rotates them, those screens fall back to simpler data until the app refreshes the
+  hashes, which it does by itself.
 - Spotify changes its internal endpoints a few times a year. The catalog degrades
   per-feature (a screen says browsing is unavailable; Spotify Connect keeps working).
 - The visualizer presets follow the WMP wiki's descriptions; the original gallery images
