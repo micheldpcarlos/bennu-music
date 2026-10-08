@@ -485,6 +485,24 @@ std::string Catalog::playlistCover(const std::string& id) {
       cover = preferred.empty() ? any : preferred;
       if (cover.empty()) { auto hex = base64ToHex(str(attributes, "picture", 64)); if (hex.size() == 40) cover = imageURL(hex); }
     }
+    if (cover.empty()) {
+      // No cover at all: Spotify shows a mosaic of the first tracks' album art. Build the same.
+      auto uris = contextTrackURIs("spotify:playlist:" + id, nullptr);
+      if (uris.size() > 8) uris.resize(8);
+      hydrate(uris, [](size_t, bool) {});
+      std::vector<std::string> ids; std::set<std::string> seen;
+      for (const auto& uri : uris) {
+        auto json = trackJSON(uri); if (json.empty()) continue;
+        auto art = str(JSON::parse(json), "artwork", 512);
+        auto slash = art.rfind('/');
+        if (slash == std::string::npos || art.size() - slash - 1 != 40) continue;
+        auto imageId = art.substr(slash + 1);
+        if (seen.insert(imageId).second) ids.push_back(imageId);
+        if (ids.size() == 4) break;
+      }
+      if (ids.size() == 4) cover = "spotify:mosaic:" + ids[0] + ":" + ids[1] + ":" + ids[2] + ":" + ids[3];
+      else if (!ids.empty()) cover = "https://i.scdn.co/image/" + ids[0];
+    }
   } catch (...) { std::fprintf(stderr, "CATALOG: playlist cover lookup failed\n"); }
   std::lock_guard<std::mutex> lock(cacheMutex);
   if (coverCache.size() > 500) coverCache.clear();

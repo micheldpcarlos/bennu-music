@@ -109,7 +109,7 @@ static char kImageURLKey;
         fetched = [UIImage imageWithData:data];
         if (fetched) [data writeToFile:path atomically:YES];
       }
-      if (!fetched) fprintf(stderr, "IMG: %s failed status=%ld error=%ld %s\n", address.host.UTF8String, (long)status, (long)error.code, error.localizedDescription.UTF8String ?: "");
+      if (!fetched) fprintf(stderr, "IMG: %s/%s failed status=%ld error=%ld %s\n", address.host.UTF8String, address.lastPathComponent.UTF8String ?: "", (long)status, (long)error.code, error.localizedDescription.UTF8String ?: "");
       finish(fetched);
     }] resume];
   });
