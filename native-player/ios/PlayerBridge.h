@@ -8,6 +8,7 @@ enum IPadPlayerState { IPadWaiting = 0, IPadConnecting = 1, IPadReady = 2, IPadF
 enum IPadPlayerCommand { IPadTogglePause = 1, IPadPrevious = 2, IPadNext = 3 };
 typedef struct IPadPlayerSnapshot {
   int state, hasTrack, paused, loading, pending;
+  int reconnecting, repeat;   // repeat: 0 off, 1 all, 2 one
   uint32_t positionMs, durationMs;
   char title[256], artist[256], album[256], artwork[512], trackId[128], error[256];
 } IPadPlayerSnapshot;
@@ -27,6 +28,11 @@ int ipad_player_command(int command);
 // json: {"uris":[...], "index":n, "context":"spotify:album:...", "shuffle":false}
 int ipad_player_play_tracks(const char* json);
 int ipad_player_seek(uint32_t positionMs);
+int ipad_player_set_repeat(int mode);
+// json: {"uris":[...]} inserted right after the playing track ("play next").
+int ipad_player_queue_tracks(const char* json);
+// Developer aid: drops the access-point socket so the session's reconnect path runs.
+void ipad_engine_drop_connection(void);
 // Current queue as JSON {"uris":[...],"index":n,"context":"..."} (what was last loaded locally).
 uint64_t ipad_player_queue(char* output, uint32_t capacity);
 
@@ -50,6 +56,7 @@ void ipad_player_paused(int paused);
 void ipad_player_position(uint32_t positionMs);
 void ipad_player_loading(uint32_t positionMs);
 void ipad_player_inactive(void);
+void ipad_player_reconnecting(int reconnecting);
 #ifdef __cplusplus
 }
 #include <functional>
@@ -60,6 +67,8 @@ namespace ipad_player {
 void setControlHandler(std::function<bool(int)> handler);
 void setPlaybackHandlers(std::function<bool(const std::vector<std::string>&, size_t, const std::string&)> play,
                          std::function<void(uint32_t)> seek);
+void setQueueHandlers(std::function<void(const std::vector<std::string>&)> enqueue, std::function<void(int)> repeat);
+void setDropHandler(std::function<void()> handler);
 // Catalog service: (kind, argument, publish(json, done)). Invoked on a worker thread per request.
 using CatalogPublish = std::function<void(const std::string&, bool)>;
 void setCatalogService(std::function<void(const std::string&, const std::string&, const CatalogPublish&)> service);

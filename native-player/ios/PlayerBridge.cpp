@@ -26,6 +26,11 @@ std::function<bool(const std::vector<std::string>&, size_t, const std::string&)>
 std::function<void(uint32_t)> seekTrack;
 std::function<void(const std::string&, const std::string&, const ipad_player::CatalogPublish&)> catalogService;
 std::function<void()> stopHandler;
+std::function<void()> dropHandler;
+std::function<void(const std::vector<std::string>&)> enqueueTracks;
+std::function<void(int)> setRepeatMode;
+std::vector<std::string> pendingQueue; int pendingRepeat = -1;
+std::vector<std::string> queueUris; size_t queueIndex = 0; std::string queueContext;
 std::function<void(bool)> discoverableHandler;
 const char* kHiddenMarker = "/var/mobile/Documents/phoenix-hidden";
 std::atomic<bool> stopFlag{false};
@@ -57,7 +62,8 @@ template <size_t N> void copyText(char (&output)[N], const char* input) {
 }
 void resetHandlersLocked() {
   commands.clear(); control = nullptr; playTracks = nullptr; seekTrack = nullptr;
-  pendingPlay = PendingPlay{}; pendingSeek = false;
+  pendingPlay = PendingPlay{}; pendingSeek = false; pendingQueue.clear(); pendingRepeat = -1;
+  enqueueTracks = nullptr; setRepeatMode = nullptr; dropHandler = nullptr;
 }
 bool validTrack(const std::string& uri) {
   return uri.size() == 36 && uri.compare(0, 14, "spotify:track:") == 0 &&
@@ -129,6 +135,36 @@ void ipad_engine_stop(void) {
   if (handler) { try { handler(); } catch (...) {} }
 }
 int ipad_engine_stop_requested(void) { return stopFlag ? 1 : 0; }
+void ipad_engine_drop_connection(void) {
+  std::function<void()> handler;
+  { std::lock_guard<std::mutex> lock(bridgeMutex); handler = dropHandler; }
+  if (handler) { try { handler(); } catch (...) {} }
+}
+int ipad_player_set_repeat(int mode) {
+  if (mode < 0 || mode > 2) return 0;
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  if (state.state != IPadReady || !setRepeatMode) return 0;
+  pendingRepeat = mode; state.repeat = mode;
+  return 1;
+}
+int ipad_player_queue_tracks(const char* json) {
+  if (!json) return 0;
+  std::vector<std::string> uris;
+  try {
+    auto document = nlohmann::json::parse(json);
+    if (!document.is_object() || !document.count("uris") || !document["uris"].is_array()) return 0;
+    for (const auto& item : document["uris"]) if (item.is_string() && validTrack(item.get<std::string>())) uris.push_back(item.get<std::string>());
+  } catch (...) { return 0; }
+  if (uris.empty()) return 0;
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  if (state.state != IPadReady || !state.hasTrack || !enqueueTracks) return 0;
+  pendingQueue.insert(pendingQueue.end(), uris.begin(), uris.end());
+  return 1;
+}
+void ipad_player_reconnecting(int reconnecting) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  state.reconnecting = reconnecting ? 1 : 0;
+}
 int ipad_engine_discoverable(void) { struct stat info; return stat(kHiddenMarker, &info) == 0 ? 0 : 1; }
 void ipad_engine_set_discoverable(int on) {
   if (on) std::remove(kHiddenMarker); else { std::ofstream marker(kHiddenMarker); marker << "hidden"; }
@@ -262,6 +298,14 @@ void clearControlHandler() {
   std::lock_guard<std::mutex> lock(bridgeMutex);
   resetHandlersLocked(); catalogService = nullptr; stopHandler = nullptr;
 }
+void setQueueHandlers(std::function<void(const std::vector<std::string>&)> enqueue, std::function<void(int)> repeat) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  enqueueTracks = std::move(enqueue); setRepeatMode = std::move(repeat);
+}
+void setDropHandler(std::function<void()> handler) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  dropHandler = std::move(handler);
+}
 void setDiscoverableHandler(std::function<void(bool)> handler) {
   std::lock_guard<std::mutex> lock(bridgeMutex);
   discoverableHandler = std::move(handler);
@@ -286,6 +330,7 @@ void dispatchPending() {
       if (playHandler(play.uris, play.index, play.context)) {
         nlohmann::json queue{{"uris", play.uris}, {"index", play.index}, {"context", play.context}};
         std::lock_guard<std::mutex> lock(bridgeMutex);
+        queueUris = play.uris; queueIndex = play.index; queueContext = play.context;
         queueJSON = queue.dump(); ++queueRevision;
       } else std::fprintf(stderr, "CATALOG: local track load unavailable\n");
     } catch (const std::exception& error) { std::fprintf(stderr, "CATALOG: local track load failed: %s\n", error.what()); }
@@ -294,6 +339,27 @@ void dispatchPending() {
   if (seek && seekHandler) {
     try { seekHandler(seekMs); } catch (...) { std::fprintf(stderr, "UI: seek failed\n"); }
   }
+  std::vector<std::string> toQueue; int repeatMode = -1;
+  std::function<void(const std::vector<std::string>&)> enqueueHandler; std::function<void(int)> repeatHandler;
+  {
+    std::lock_guard<std::mutex> lock(bridgeMutex);
+    toQueue.swap(pendingQueue); repeatMode = pendingRepeat; pendingRepeat = -1;
+    enqueueHandler = enqueueTracks; repeatHandler = setRepeatMode;
+  }
+  if (!toQueue.empty() && enqueueHandler) {
+    try {
+      enqueueHandler(toQueue);
+      std::lock_guard<std::mutex> lock(bridgeMutex);
+      // Mirror the insertion in the queue snapshot, right after the playing track.
+      size_t at = 0;
+      std::string current = state.trackId;
+      for (size_t i = 0; i < queueUris.size(); ++i) if (queueUris[i].size() == 36 && queueUris[i].compare(14, 22, current) == 0) { at = i + 1; break; }
+      if (at == 0) at = std::min(queueIndex + 1, queueUris.size());
+      queueUris.insert(queueUris.begin() + at, toQueue.begin(), toQueue.end());
+      queueJSON = nlohmann::json{{"uris", queueUris}, {"index", queueIndex}, {"context", queueContext}}.dump(); ++queueRevision;
+    } catch (...) { std::fprintf(stderr, "UI: add to queue failed\n"); }
+  }
+  if (repeatMode >= 0 && repeatHandler) { try { repeatHandler(repeatMode); } catch (...) {} }
   for (;;) {
     int command;
     std::function<bool(int)> handler;

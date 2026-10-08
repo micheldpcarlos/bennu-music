@@ -94,6 +94,7 @@ class MercurySession : public bell::Task, public cspot::Session {
   std::string getCountryCode();
 
   void disconnect();
+  bool reconnecting() const { return isReconnecting; }
 
   void setConnectedHandler(ConnectionEstabilishedCallback callback);
 

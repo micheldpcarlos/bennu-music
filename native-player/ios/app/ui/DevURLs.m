@@ -67,6 +67,13 @@ BOOL PhoenixHandleURL(NSURL* url) {
     UINavigationController* navigation = (UINavigationController*)tabs.selectedViewController;
     PhoenixViewController* top = (PhoenixViewController*)navigation.topViewController;
     if ([top isKindOfClass:PhoenixViewController.class]) [top.table setContentOffset:CGPointMake(0, [query[@"y"] floatValue]) animated:NO];
+  } else if ([action isEqualToString:@"repeat"]) {
+    ipad_player_set_repeat([query[@"mode"] intValue]);
+  } else if ([action isEqualToString:@"enqueue"]) {
+    NSString* json = [NSString stringWithFormat:@"{\"uris\":[\"%@\"]}", query[@"uri"] ?: @""];
+    fprintf(stderr, "DEV: enqueue -> %d\n", ipad_player_queue_tracks(json.UTF8String));
+  } else if ([action isEqualToString:@"drop"]) {
+    ipad_engine_drop_connection();
   } else if ([action isEqualToString:@"visible"]) {
     ipad_engine_set_discoverable([query[@"on"] boolValue]);
   } else if ([action isEqualToString:@"signout"]) {

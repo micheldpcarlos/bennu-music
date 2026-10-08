@@ -104,6 +104,11 @@ class TrackQueue : public bell::Task {
 
   bool hasTracks();
   bool isFinished();
+  // 0 = off, 1 = repeat all, 2 = repeat one. Affects which track is preloaded next.
+  void setRepeatMode(int mode);
+  int repeatMode() const { return repeat; }
+  // Inserts tracks right after the current one without interrupting playback.
+  void insertAfterCurrent(const std::vector<TrackReference>& tracks);
   bool skipTrack(SkipDirection dir, bool expectNotify = true);
   bool updateTracks(uint32_t requestedPosition = 0, bool initial = false);
   TrackInfo getTrackInfo(cspot_compat::string_view identifier);
@@ -129,6 +134,7 @@ class TrackQueue : public bell::Task {
   std::string accessKey;
 
   int16_t currentTracksIndex = -1;
+  std::atomic<int> repeat{0};
 
   bool isRunning = false;
 

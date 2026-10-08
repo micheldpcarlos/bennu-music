@@ -115,6 +115,26 @@ void SpircHandler::loadTracks(const std::vector<std::string>& uris, size_t index
   handleFrame(encoded);
 }
 
+void SpircHandler::queueTracks(const std::vector<std::string>& uris) {
+  std::vector<TrackReference> tracks;
+  for (const auto& uri : uris) {
+    if (!validTrackURI(uri)) continue;
+    TrackReference reference;
+    reference.uri = uri; reference.context = uri; reference.queued = true;
+    reference.decodeURI();
+    if (reference.gid.size() > 16) continue;
+    reference.gid.insert(reference.gid.begin(), 16 - reference.gid.size(), 0);
+    tracks.push_back(std::move(reference));
+  }
+  trackQueue->insertAfterCurrent(tracks);
+  notify();
+}
+
+void SpircHandler::setRepeat(int mode) {
+  trackQueue->setRepeatMode(mode);
+  notify();
+}
+
 void SpircHandler::seekTo(uint32_t positionMs) {
   // Same steps as a remote Seek frame, on the engine dispatch thread.
   this->trackPlayer->seekMs(positionMs);

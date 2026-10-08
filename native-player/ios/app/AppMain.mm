@@ -3,16 +3,37 @@
 #import <UIKit/UIKit.h>
 #include <pthread.h>
 #include <atomic>
+#include <chrono>
+#include <algorithm>
 #include <cstdio>
 #include <exception>
 #import "ui/MainTabController.h"
 #import "ui/DevURLs.h"
 #include "../PlayerBridge.h"
+#include "../auth/AuthStore.h"
 
 int ipad_cspot_engine_main(int argc, char** argv);
 
 static std::atomic<bool> engineRunning{false};
 static void startEngine();
+static int restartAttempts = 0;
+static std::chrono::steady_clock::time_point engineStartedAt;
+// After a crash of the engine (not a sign-out), come back with growing delays while an account exists.
+static bool scheduleRestart(const char* reason) {
+  char saved[4096] = {};
+  int account = ipad_auth_load(saved, sizeof(saved));
+  std::fill(saved, saved + sizeof(saved), '\0');
+  if (account <= 0) return false;
+  auto ranFor = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - engineStartedAt).count();
+  if (ranFor > 120) restartAttempts = 0;  // a long healthy run resets the backoff
+  int delay = std::min(60, 2 << std::min(restartAttempts, 5));
+  ++restartAttempts;
+  std::fprintf(stderr, "APP: engine failed (%s); restarting in %ds (attempt %d)\n", reason, delay, restartAttempts);
+  ipad_player_connecting();
+  ipad_player_reconnecting(1);
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ startEngine(); });
+  return true;
+}
 static void* runEngine(void*) {
   @autoreleasepool {
     char name[] = "ipad-media-player";
@@ -20,6 +41,7 @@ static void* runEngine(void*) {
     char value[] = "160";
     char* arguments[] = {name, bitrate, value, nullptr};
     ipad_player_waiting();
+    engineStartedAt = std::chrono::steady_clock::now();
     try {
       int result = ipad_cspot_engine_main(3, arguments);
       std::fprintf(stderr, "APP: engine returned %d\n", result);
@@ -30,6 +52,8 @@ static void* runEngine(void*) {
         dispatch_async(dispatch_get_main_queue(), ^{ startEngine(); });
         return nullptr;
       }
+      engineRunning.store(false);
+      if (scheduleRestart(result ? "could not connect" : "stopped")) return nullptr;
       ipad_player_failed(result ? "The player could not connect." : "The player stopped.");
     } catch (const std::exception& error) {
       std::fprintf(stderr, "APP: engine exception: %s\n", error.what());
@@ -38,6 +62,8 @@ static void* runEngine(void*) {
         dispatch_async(dispatch_get_main_queue(), ^{ startEngine(); });
         return nullptr;
       }
+      engineRunning.store(false);
+      if (scheduleRestart(error.what())) return nullptr;
       ipad_player_failed(error.what());
     } catch (...) {
       std::fprintf(stderr, "APP: engine failed with unknown exception\n");

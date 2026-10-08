@@ -61,6 +61,8 @@ class SpircHandler {
   // album/playlist/collection the list came from (shown to remote controllers).
   void loadTracks(const std::vector<std::string>& uris, size_t index, const std::string& contextUri);
   void seekTo(uint32_t positionMs);
+  void queueTracks(const std::vector<std::string>& uris);  // play next, without interrupting
+  void setRepeat(int mode);
   std::shared_ptr<cspot::TrackQueue> getTrackQueue() { return trackQueue; }
 
   void disconnect();

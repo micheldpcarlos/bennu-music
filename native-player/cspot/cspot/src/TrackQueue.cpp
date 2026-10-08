@@ -508,7 +508,9 @@ void TrackQueue::processTrack(std::shared_ptr<QueuedTrack> track) {
 }
 
 bool TrackQueue::queueNextTrack(int offset, uint32_t positionMs) {
-  const int requestedRefIndex = offset + currentTracksIndex;
+  int requestedRefIndex = offset + currentTracksIndex;
+  if (offset > 0 && repeat == 2) requestedRefIndex = currentTracksIndex;  // repeat one
+  if (offset > 0 && repeat == 1 && !currentTracks.empty()) requestedRefIndex %= static_cast<int>(currentTracks.size());  // repeat all
 
   if (requestedRefIndex < 0 || requestedRefIndex >= currentTracks.size()) {
     return false;
@@ -550,7 +552,11 @@ bool TrackQueue::skipTrack(SkipDirection dir, bool expectNotify) {
       queueNextTrack(0);
     }
   } else {
-    if (currentTracks.size() > currentTracksIndex + 1) {
+    if (!expectNotify && repeat == 2) {
+      // Repeat one: the preloaded track was the current one again; keep the index.
+      preloadedTracks.pop_front();
+      queueNextTrack(1);
+    } else if (currentTracks.size() > currentTracksIndex + 1) {
       preloadedTracks.pop_front();
 
       if (!queueNextTrack(preloadedTracks.size() + 1)) {
@@ -558,6 +564,13 @@ bool TrackQueue::skipTrack(SkipDirection dir, bool expectNotify) {
       }
 
       currentTracksIndex++;
+    } else if (repeat == 1 && !currentTracks.empty()) {
+      // Repeat all: wrap to the first track.
+      preloadedTracks.pop_front();
+      currentTracksIndex = -1;
+      if (!queueNextTrack(1)) CSPOT_LOG(info, "Failed to queue first track");
+      currentTracksIndex = 0;
+      if (preloadedTracks.empty()) queueNextTrack(0);
     } else {
       skipped = false;
     }
@@ -591,7 +604,27 @@ bool TrackQueue::hasTracks() {
 
 bool TrackQueue::isFinished() {
   std::lock_guard<decltype(tracksMutex)> lock(tracksMutex);
+  if (repeat != 0) return false;
   return currentTracksIndex >= currentTracks.size() - 1;
+}
+
+void TrackQueue::setRepeatMode(int mode) {
+  std::lock_guard<decltype(tracksMutex)> lock(tracksMutex);
+  repeat = mode;
+  // Re-plan what comes next: keep the playing track, drop the rest of the preload.
+  if (preloadedTracks.size() > 1) preloadedTracks.erase(preloadedTracks.begin() + 1, preloadedTracks.end());
+  if (!preloadedTracks.empty()) queueNextTrack(1);
+}
+
+void TrackQueue::insertAfterCurrent(const std::vector<TrackReference>& tracks) {
+  std::lock_guard<decltype(tracksMutex)> lock(tracksMutex);
+  if (tracks.empty()) return;
+  size_t at = currentTracksIndex < 0 ? 0 : static_cast<size_t>(currentTracksIndex) + 1;
+  if (at > currentTracks.size()) at = currentTracks.size();
+  currentTracks.insert(currentTracks.begin() + at, tracks.begin(), tracks.end());
+  playbackState->remoteTracks = currentTracks;
+  if (preloadedTracks.size() > 1) preloadedTracks.erase(preloadedTracks.begin() + 1, preloadedTracks.end());
+  if (!preloadedTracks.empty()) queueNextTrack(1);
 }
 
 bool TrackQueue::updateTracks(uint32_t requestedPosition, bool initial) {

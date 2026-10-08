@@ -273,7 +273,7 @@ int main(int argc, char** argv) {
     CSPOT_LOG(info, "Creating player");
 #ifdef CSPOT_IOS_APP
     ipad_player_connecting();
-    const int connectionAttempts = 3;
+    const int connectionAttempts = 8;  // ~2 minutes of backoff before giving up
 #else
     const int connectionAttempts = 1;
 #endif
@@ -287,9 +287,14 @@ int main(int argc, char** argv) {
       } catch (...) {
         ctx.reset();
         if (attempt + 1 == connectionAttempts) throw;
-        std::fprintf(stderr, "AUTH: AP connection failed; retry %d/%d in %ds\n",
-            attempt + 2, connectionAttempts, (attempt + 1) * 2);
-        std::this_thread::sleep_for(std::chrono::seconds((attempt + 1) * 2));
+        int wait = std::min(30, 2 << attempt);
+        std::fprintf(stderr, "AUTH: AP connection failed; retry %d/%d in %ds\n", attempt + 2, connectionAttempts, wait);
+#ifdef CSPOT_IOS_APP
+        for (int i = 0; i < wait * 5 && !ipad_player::stopRequested(); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        if (ipad_player::stopRequested()) return 0;
+#else
+        std::this_thread::sleep_for(std::chrono::seconds(wait));
+#endif
       }
     }
     ctx->config.authData = ctx->session->authenticate(loginBlob);
@@ -360,11 +365,15 @@ int main(int argc, char** argv) {
             auto active = weakHandler.lock(); if (active) active->seekTo(positionMs);
           });
       std::weak_ptr<cspot::Context> weakContext(ctx);
-      ipad_player::setStopHandler([weakContext, &isRunning]() {
-        isRunning = false;
-        // Only shut the socket down here; the engine thread notices, leaves its loop and tears down.
+      // The packet loop polls every 200 ms, so clearing the flag is enough; touching the socket
+      // from here raced the session's own reconnect logic.
+      ipad_player::setStopHandler([&isRunning]() { isRunning = false; });
+      ipad_player::setDropHandler([weakContext]() {
         if (auto context = weakContext.lock()) { try { context->session->interrupt(); } catch (...) {} }
       });
+      ipad_player::setQueueHandlers(
+          [weakHandler](const std::vector<std::string>& uris) { if (auto active = weakHandler.lock()) active->queueTracks(uris); },
+          [weakHandler](int mode) { if (auto active = weakHandler.lock()) active->setRepeat(mode); });
       {
         auto* zeroconf = zeroconfServer.get();
         zeroconf->blob = std::make_shared<cspot::LoginBlob>(kDeviceName);
@@ -388,6 +397,7 @@ int main(int argc, char** argv) {
       while (isRunning) {
 #ifdef CSPOT_IOS_APP
         ipad_player::dispatchPending();
+        ipad_player_reconnecting(ctx->session->reconnecting() ? 1 : 0);
         try { ctx->session->handlePacket(); }
         catch (...) { if (ipad_player::stopRequested()) break; throw; }
 #else

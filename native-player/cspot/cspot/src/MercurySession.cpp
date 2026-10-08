@@ -128,7 +128,7 @@ void MercurySession::unregisterAudioKey(uint32_t sequenceId) {
 void MercurySession::disconnect() {
   CSPOT_LOG(info, "Disconnecting mercury session");
   this->isRunning = false;
-  conn->close();
+  if (conn) conn->close();  // null while a reconnect attempt is in flight
   std::lock_guard<decltype(this->isRunningMutex)> lock(this->isRunningMutex);
 }
 
