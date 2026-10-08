@@ -344,6 +344,7 @@ int main(int argc, char** argv) {
       auto catalog = std::make_shared<ipad_player::Catalog>(ctx);
       ipad_player::setCatalogService([catalog](const std::string& kind, const std::string& argument, const ipad_player::CatalogPublish& publish) {
         if (kind == "search") catalog->search(argument, publish);
+        else if (kind == "pathfinder") { std::string hash = argument == "refresh" ? catalog->pathfinderRefresh() : ""; publish("{\"status\":\"" + catalog->pathfinderStatus() + "\",\"loading\":false}", true); (void)hash; }
         else if (kind == "album") catalog->album(argument, publish);
         else if (kind == "artist") catalog->artist(argument, publish);
         else if (kind == "playlist") catalog->playlist(argument, publish);

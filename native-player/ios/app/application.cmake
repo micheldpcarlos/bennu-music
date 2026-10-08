@@ -68,4 +68,5 @@ target_sources(ipad-media-app PRIVATE
  "${CMAKE_CURRENT_SOURCE_DIR}/auth/DeviceAuth.cpp"
  "${CMAKE_CURRENT_SOURCE_DIR}/Catalog.cpp"
  "${CMAKE_CURRENT_SOURCE_DIR}/SpclientClient.cpp"
- "${CMAKE_CURRENT_SOURCE_DIR}/CatalogProbe.cpp")
+ "${CMAKE_CURRENT_SOURCE_DIR}/CatalogProbe.cpp"
+ "${CMAKE_CURRENT_SOURCE_DIR}/Pathfinder.cpp")

@@ -4,8 +4,8 @@
 #import "BennuCells.h"
 #import "CatalogClient.h"
 #import "PlayerModel.h"
-enum { SearchSongs = 0, SearchArtists, SearchAlbums, SearchCount };
-enum { FilterAll = 0, FilterSongs, FilterArtists, FilterAlbums };
+enum { SearchSongs = 0, SearchArtists, SearchAlbums, SearchPlaylists, SearchCount };
+enum { FilterAll = 0, FilterSongs, FilterArtists, FilterAlbums, FilterPlaylists };
 static NSString* const kRecentSearches = @"BennuRecentSearches";
 
 // Genre tile used by the browse grid.
@@ -38,6 +38,7 @@ static NSString* const kRecentSearches = @"BennuRecentSearches";
 @property(nonatomic, strong) NSArray* tracks;
 @property(nonatomic, strong) NSArray* artists;
 @property(nonatomic, strong) NSArray* albums;
+@property(nonatomic, strong) NSArray* playlists;
 @property(nonatomic, strong) CatalogRequest* request;
 @property(nonatomic, strong) NSTimer* debounce;
 @property(nonatomic, copy) NSString* lastQuery;
@@ -98,7 +99,7 @@ static NSString* const kRecentSearches = @"BennuRecentSearches";
   self.cancelButton.hidden = YES;
   self.pills = [[UIScrollView alloc] init]; self.pills.showsHorizontalScrollIndicator = NO;
   NSMutableArray* pillButtons = [NSMutableArray array]; CGFloat x = 0;
-  NSArray* names = @[@"All", @"Songs", @"Artists", @"Albums"];
+  NSArray* names = @[@"All", @"Songs", @"Artists", @"Albums", @"Playlists"];
   for (NSUInteger i = 0; i < names.count; i++) {
     UIButton* pill = [UIButton buttonWithType:UIButtonTypeCustom];
     [pill setTitle:names[i] forState:UIControlStateNormal];
@@ -198,6 +199,7 @@ static NSString* const kRecentSearches = @"BennuRecentSearches";
     owner.tracks = [json[@"tracks"] isKindOfClass:NSArray.class] ? json[@"tracks"] : @[];
     owner.artists = [json[@"artists"] isKindOfClass:NSArray.class] ? json[@"artists"] : @[];
     owner.albums = [json[@"albums"] isKindOfClass:NSArray.class] ? json[@"albums"] : @[];
+    owner.playlists = [json[@"playlists"] isKindOfClass:NSArray.class] ? json[@"playlists"] : @[];
     owner.status.text = done ? (owner.tracks.count ? @"" : @"No results.") : @"Searching…";
     [owner.table reloadData];
   }];
@@ -215,19 +217,19 @@ static NSString* const kRecentSearches = @"BennuRecentSearches";
 // ---- results table
 - (BOOL)sectionVisible:(NSInteger)section {
   if (self.filter == FilterAll) return YES;
-  return (section == SearchSongs && self.filter == FilterSongs) || (section == SearchArtists && self.filter == FilterArtists) || (section == SearchAlbums && self.filter == FilterAlbums);
+  return (section == SearchSongs && self.filter == FilterSongs) || (section == SearchArtists && self.filter == FilterArtists) || (section == SearchAlbums && self.filter == FilterAlbums) || (section == SearchPlaylists && self.filter == FilterPlaylists);
 }
 - (NSInteger)numberOfSectionsInTableView:(UITableView*)table { return SearchCount; }
 - (NSInteger)tableView:(UITableView*)table numberOfRowsInSection:(NSInteger)section {
   if (![self sectionVisible:section]) return 0;
-  NSInteger count = section == SearchSongs ? self.tracks.count : section == SearchArtists ? self.artists.count : self.albums.count;
+  NSInteger count = section == SearchSongs ? self.tracks.count : section == SearchArtists ? self.artists.count : section == SearchAlbums ? self.albums.count : self.playlists.count;
   if (self.filter == FilterAll && section != SearchSongs) count = MIN(count, 4);  // "All" shows a preview; pills show everything
   return count;
 }
 - (CGFloat)tableView:(UITableView*)table heightForHeaderInSection:(NSInteger)section { return [self tableView:table numberOfRowsInSection:section] ? 48 : 0; }
 - (UIView*)tableView:(UITableView*)table viewForHeaderInSection:(NSInteger)section {
   SectionHeader* header = [table dequeueReusableHeaderFooterViewWithIdentifier:@"header"];
-  header.titleLabel.text = @[@"Songs", @"Artists", @"Albums"][section];
+  header.titleLabel.text = @[@"Songs", @"Artists", @"Albums", @"Playlists"][section];
   return header;
 }
 - (void)configure:(TrackCell*)cell at:(NSIndexPath*)path {
@@ -242,9 +244,13 @@ static NSString* const kRecentSearches = @"BennuRecentSearches";
   if (path.section == SearchArtists) {
     NSDictionary* artist = self.artists[path.row];
     [cell showTitle:artist[@"name"] subtitle:@"Artist" artwork:artist[@"image"] placeholder:[BennuTheme placeholderArt:48] round:YES];
-  } else {
+  } else if (path.section == SearchAlbums) {
     NSDictionary* album = self.albums[path.row];
     [cell showTitle:album[@"name"] subtitle:[NSString stringWithFormat:@"Album • %@", album[@"artist"] ?: @""] artwork:album[@"artwork"] placeholder:[BennuTheme placeholderArt:48] round:NO];
+  } else {
+    NSDictionary* playlist = self.playlists[path.row];
+    NSString* owner = [playlist[@"owner"] isKindOfClass:NSString.class] && [playlist[@"owner"] length] ? [NSString stringWithFormat:@"Playlist • %@", playlist[@"owner"]] : @"Playlist";
+    [cell showTitle:playlist[@"name"] subtitle:owner artwork:playlist[@"artwork"] placeholder:[BennuTheme placeholderArt:48] round:NO];
   }
   return cell;
 }
@@ -257,8 +263,10 @@ static NSString* const kRecentSearches = @"BennuRecentSearches";
     [[PlayerModel shared] playURIs:uris index:path.row contextUri:@"" contextName:[NSString stringWithFormat:@"Search: %@", self.lastQuery]];
   } else if (path.section == SearchArtists) {
     NSDictionary* artist = self.artists[path.row]; BennuOpen(artist[@"uri"], artist[@"name"], artist[@"image"]);
-  } else {
+  } else if (path.section == SearchAlbums) {
     NSDictionary* album = self.albums[path.row]; BennuOpen(album[@"uri"], album[@"name"], album[@"artwork"]);
+  } else {
+    NSDictionary* playlist = self.playlists[path.row]; BennuOpen(playlist[@"uri"], playlist[@"name"], playlist[@"artwork"]);
   }
 }
 // ---- browse grid: recent searches, then categories

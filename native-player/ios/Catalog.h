@@ -9,6 +9,7 @@
 namespace cspot { struct Context; }
 namespace ipad_player {
 class SpclientClient;
+class Pathfinder;
 // Browsing data for the UI, built from Spotify's spclient endpoints with the session's
 // own token. Every method returns UI-ready JSON and may publish partial results while
 // track names are still being fetched. Track metadata is cached on disk.
@@ -18,6 +19,8 @@ class Catalog {
   explicit Catalog(std::shared_ptr<cspot::Context> context, std::string cacheDir = "/var/mobile/Documents/bennu-cache");
   ~Catalog();
   void search(const std::string& query, const Publish& publish);
+  std::string pathfinderStatus();
+  std::string pathfinderRefresh();
   void album(const std::string& id, const Publish& publish);
   void artist(const std::string& id, const Publish& publish);
   void playlist(const std::string& id, const Publish& publish);
@@ -46,6 +49,7 @@ class Catalog {
   std::map<std::string, std::string> artistCache;   // gid hex -> artist summary json (per session)
   std::shared_ptr<cspot::Context> context_;
   std::unique_ptr<SpclientClient> client, client2;
+  std::unique_ptr<Pathfinder> pathfinder;
   std::string cacheDir;
   std::mutex cacheMutex;
   std::map<std::string, std::string> memoryCache;  // uri -> track json

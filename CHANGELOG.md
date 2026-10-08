@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0 (2026-10-08)
+
+- Search now uses the web player's search service and returns songs, artists, albums and
+  **playlists** directly, in one call, with no per-track metadata fetches. Artists and albums
+  are real search hits instead of being derived from matching songs.
+- The service depends on a query hash that Spotify rotates with web player releases. The app
+  keeps the last working hash, and when it stops working it tries, in order: a config file in
+  this repository, scraping the web player's JavaScript on the device, and the hash compiled
+  into the release. If all of that fails, search falls back to the previous track-only path.
+- A `pathfinder` kill switch in `bennu-catalog-flags.json` disables the new path; three
+  consecutive failures pause it for ten minutes.
+- Refreshing the hash on the device takes about two seconds (page, main bundle, search chunk);
+  it also runs in the background once a week. A client token for the service is obtained
+  automatically and renewed every two weeks.
+- Fixes the HTTP client's header reader for very long headers; chunked responses from any host.
+
 ## 0.2.1 (2026-10-08)
 
 - Fixes an intermittent crash while typing in Search: a replaced request stayed in the

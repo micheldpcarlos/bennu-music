@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "DevURLs.h"
+#import "CatalogClient.h"
 #import <UIKit/UIKit.h>
 #import "MainTabController.h"
 #import "Navigation.h"
@@ -110,6 +111,12 @@ BOOL BennuHandleURL(NSURL* url) {
     [search cancel];
   } else if ([action isEqualToString:@"volume"]) {
     ipad_player_volume((uint32_t)[query[@"v"] intValue]);   // as if the phone moved the slider
+  } else if ([action isEqualToString:@"pathfinder"]) {
+    // bennu://pathfinder (status) or bennu://pathfinder?action=refresh (force a hash discovery)
+    static CatalogRequest* probe; 
+    probe = [[CatalogClient shared] request:@"pathfinder" argument:[query[@"action"] isEqualToString:@"refresh"] ? @"refresh" : @"" update:^(NSDictionary* json, BOOL done) {
+      fprintf(stderr, "DEV: pathfinder %s\n", [json[@"status"] isKindOfClass:NSString.class] ? [json[@"status"] UTF8String] : [json[@"error"] isKindOfClass:NSString.class] ? [json[@"error"] UTF8String] : "?");
+    }];
   } else if ([action isEqualToString:@"seek"]) {
     ipad_player_seek((uint32_t)[query[@"ms"] longLongValue]);
   } else if ([action isEqualToString:@"repeat"]) {

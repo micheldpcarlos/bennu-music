@@ -6,6 +6,9 @@
 #include "picohttpparser.h"
 #include <nlohmann/json.hpp>
 #include <cstdio>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <vector>
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
@@ -71,35 +74,26 @@ SpclientClient::Response SpclientClient::post(const std::string& path, const std
   }
   throw std::runtime_error("unreachable");
 }
-SpclientClient::Response SpclientClient::request(const std::string& method, const std::string& path, const std::string& accept, const std::string& token, const std::string& body, const std::string& contentType) {
-  auto& s = *stream;
-  s << method << " " << path << " HTTP/1.1\r\nHost: " << host << "\r\nConnection: keep-alive\r\nAccept: " << accept
-    << "\r\nAuthorization: Bearer " << token;
-  if (method == "POST") s << "\r\nContent-Type: " << contentType << "\r\nContent-Length: " << body.size();
-  s << "\r\n\r\n";
-  if (method == "POST" && !body.empty()) s.write(body.data(), static_cast<std::streamsize>(body.size()));
-  s.flush();
-  if (!s.good()) throw std::runtime_error("write failed");
+// Reads status, headers and body from an open stream. Supports Content-Length, chunked
+// transfer and read-to-close. `close` is set when the connection must not be reused.
+SpclientClient::Response SpclientClient::readResponse(bell::SocketStream& s, size_t limit, bool& close) {
   // Headers: read line by line into a buffer until picohttpparser accepts it.
   std::string head; head.reserve(2048);
   int status = 0, minor = 0; const char* message = nullptr; size_t messageLength = 0;
   phr_header headers[48]; size_t headerCount = 0;
   for (;;) {
-    char line[1024];
-    s.getline(line, sizeof(line));
-    auto got = s.gcount();
-    if (!s.good() || got <= 0) throw std::runtime_error("header read failed");
+    std::string line;                                     // unbounded: CSP headers alone can exceed 1 KB
+    if (!std::getline(s, line)) throw std::runtime_error("header read failed");
     size_t previous = head.size();
-    size_t length = static_cast<size_t>(got) - 1;        // stored characters, newline excluded
-    while (length && (line[length - 1] == '\r' || line[length - 1] == '\n')) --length;
-    head.append(line, length); head += "\r\n";
+    while (!line.empty() && (line.back() == '\r' || line.back() == '\n')) line.pop_back();
+    head += line; head += "\r\n";
     headerCount = sizeof(headers) / sizeof(headers[0]);
     int parsed = phr_parse_response(head.data(), head.size(), &minor, &status, &message, &messageLength, headers, &headerCount, previous);
     if (parsed > 0) break;
     if (parsed == -1) throw std::runtime_error("bad response");
     if (head.size() > 16384) throw std::runtime_error("headers too large");
   }
-  long contentLength = -1; bool chunked = false, close = false;
+  long contentLength = -1; bool chunked = false;
   for (size_t i = 0; i < headerCount; ++i) {
     std::string name(headers[i].name, headers[i].name_len), value(headers[i].value, headers[i].value_len);
     for (auto& c : name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -109,7 +103,6 @@ SpclientClient::Response SpclientClient::request(const std::string& method, cons
     else if (name == "connection" && value.find("close") != std::string::npos) close = true;
   }
   Response response; response.status = status;
-  const size_t limit = 2 * 1024 * 1024;
   if (chunked) {
     for (;;) {
       char line[64]; s.getline(line, sizeof(line));
@@ -136,7 +129,49 @@ SpclientClient::Response SpclientClient::request(const std::string& method, cons
       if (!s.good()) break;
     }
   }
+  return response;
+}
+SpclientClient::Response SpclientClient::request(const std::string& method, const std::string& path, const std::string& accept, const std::string& token, const std::string& body, const std::string& contentType) {
+  auto& s = *stream;
+  s << method << " " << path << " HTTP/1.1\r\nHost: " << host << "\r\nConnection: keep-alive\r\nAccept: " << accept
+    << "\r\nAuthorization: Bearer " << token;
+  if (method == "POST") s << "\r\nContent-Type: " << contentType << "\r\nContent-Length: " << body.size();
+  s << "\r\n\r\n";
+  if (method == "POST" && !body.empty()) s.write(body.data(), static_cast<std::streamsize>(body.size()));
+  s.flush();
+  if (!s.good()) throw std::runtime_error("write failed");
+  bool close = false;
+  Response response = readResponse(s, 2 * 1024 * 1024, close);
   if (close) disconnect();
+  return response;
+}
+
+// One-shot request to any https URL: fresh TLS connection, Connection: close, read timeout.
+// Used for hosts the keep-alive client is not bound to (web player, CDN, token service).
+SpclientClient::Response SpclientClient::fetch(const std::string& method, const std::string& url, const std::vector<std::pair<std::string, std::string>>& headers,
+                                               const std::string& body, size_t limit, int timeoutSeconds) {
+  if (url.compare(0, 8, "https://") != 0) throw std::invalid_argument("https only");
+  auto hostStart = 8; auto pathStart = url.find('/', hostStart);
+  std::string hostPort = url.substr(hostStart, pathStart == std::string::npos ? std::string::npos : pathStart - hostStart);
+  std::string path = pathStart == std::string::npos ? "/" : url.substr(pathStart);
+  auto colon = hostPort.rfind(':');
+  std::string host = colon == std::string::npos ? hostPort : hostPort.substr(0, colon);
+  int port = colon == std::string::npos ? 443 : std::atoi(hostPort.c_str() + colon + 1);
+  bell::SocketStream s;
+  if (s.open(host, port, true) != 0 || !s.isOpen()) throw std::runtime_error("connect failed: " + host);
+  if (s.fd() >= 0) { struct timeval tv; tv.tv_sec = timeoutSeconds; tv.tv_usec = 0; setsockopt(s.fd(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv); setsockopt(s.fd(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv); }
+  s << method << " " << path << " HTTP/1.1\r\nHost: " << host << "\r\nConnection: close";
+  bool hasAccept = false;
+  for (const auto& h : headers) { s << "\r\n" << h.first << ": " << h.second; if (h.first == "Accept") hasAccept = true; }
+  if (!hasAccept) s << "\r\nAccept: */*";
+  if (!body.empty()) s << "\r\nContent-Length: " << body.size();
+  s << "\r\n\r\n";
+  if (!body.empty()) s.write(body.data(), static_cast<std::streamsize>(body.size()));
+  s.flush();
+  if (!s.good()) throw std::runtime_error("write failed: " + host);
+  bool close = false;
+  Response response = readResponse(s, limit, close);
+  try { s.close(); } catch (...) {}
   return response;
 }
 }

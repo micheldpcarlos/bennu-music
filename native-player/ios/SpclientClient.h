@@ -3,6 +3,8 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
+#include <vector>
 namespace cspot { struct Context; class AccessKeyFetcher; }
 namespace bell { class SocketStream; }
 namespace ipad_player {
@@ -19,8 +21,12 @@ class SpclientClient {
   Response get(const std::string& path, const std::string& accept = "application/json");
   Response post(const std::string& path, const std::string& body, const std::string& contentType, const std::string& accept = "application/json");
   static std::string resolveHost();  // "host:port", cached process-wide
+  // One-shot request to any https URL with a size limit and read timeout; Connection: close.
+  static Response fetch(const std::string& method, const std::string& url, const std::vector<std::pair<std::string, std::string>>& headers,
+                        const std::string& body = "", size_t limit = 2 * 1024 * 1024, int timeoutSeconds = 20);
  private:
   Response request(const std::string& method, const std::string& path, const std::string& accept, const std::string& token, const std::string& body, const std::string& contentType);
+  static Response readResponse(bell::SocketStream& stream, size_t limit, bool& close);
   void connect();
   void disconnect();
   std::shared_ptr<cspot::AccessKeyFetcher> tokenFetcher;

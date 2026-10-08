@@ -1,0 +1,5 @@
+{
+  "searchDesktop": "eef7cc54888d91bdd6802623477873caa3948ae173a0c34fd86827b267e94c03",
+  "updated": "2026-10-08",
+  "note": "Persisted-query hash of the web player's searchDesktop operation. The app fetches this file at search time when its cached hash stops working; update it when Spotify ships a new web player."
+}

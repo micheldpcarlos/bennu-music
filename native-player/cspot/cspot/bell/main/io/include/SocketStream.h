@@ -29,6 +29,9 @@ class SocketBuffer : public std::streambuf {
     return internalSocket != nullptr && internalSocket->isOpen();
   }
 
+  // iPad port: the descriptor, so one-shot fetches can set SO_RCVTIMEO.
+  int fd() { return internalSocket ? internalSocket->getFd() : -1; }
+
   ~SocketBuffer() { close(); }
 
  protected:
@@ -67,5 +70,7 @@ class SocketStream : public std::iostream {
   int close() { return socketBuf.close(); }
 
   bool isOpen() { return socketBuf.isOpen(); }
+
+  int fd() { return socketBuf.fd(); }
 };
 }  // namespace bell

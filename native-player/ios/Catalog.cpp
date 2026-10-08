@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "Catalog.h"
 #include "SpclientClient.h"
+#include "Pathfinder.h"
 #include "CSpotContext.h"
 #include <nlohmann/json.hpp>
 #include <algorithm>
@@ -151,7 +152,7 @@ std::string base62FromHex(const std::string& hex) {
 }
 
 Catalog::Catalog(std::shared_ptr<cspot::Context> context, std::string dir)
-    : context_(std::move(context)), client(new SpclientClient(context_)), client2(new SpclientClient(context_)), cacheDir(std::move(dir)) {
+    : context_(std::move(context)), client(new SpclientClient(context_)), client2(new SpclientClient(context_)), pathfinder(new Pathfinder(context_)), cacheDir(std::move(dir)) {
   mkdir(cacheDir.c_str(), 0700);
   mkdir((cacheDir + "/tracks").c_str(), 0700);
   try {
@@ -374,7 +375,25 @@ void Catalog::context(const std::string& uri, const Publish& publish) {
   publish(JSON{{"uri", uri}, {"name", str(meta, "context_description", 256)}, {"uris", uris}, {"loading", false}}.dump(), true);
 }
 
+std::string Catalog::pathfinderStatus() { return pathfinder->status(); }
+std::string Catalog::pathfinderRefresh() { return pathfinder->refreshHash(true); }
 void Catalog::search(const std::string& query, const Publish& publish) {
+  // Preferred path: the web player's search, which answers with tracks, artists, albums and
+  // playlists in one call and needs no metadata hydration. Falls through to the
+  // context-resolve search when it is paused or fails.
+  if (pathfinder->available()) {
+    try {
+      auto found = pathfinder->search(query);
+      for (const auto& track : found["tracks"]) storeTrack(track["uri"].get<std::string>(), track.dump());   // the queue screen reads these
+      JSON result{{"query", query}, {"tracks", found["tracks"]}, {"albums", found["albums"]}, {"artists", found["artists"]}, {"playlists", found["playlists"]},
+          {"loading", false}, {"source", "pathfinder"}};
+      publish(result.dump(), true);
+      pathfinder->refreshIfStale();
+      return;
+    } catch (const std::exception& error) {
+      std::fprintf(stderr, "CATALOG: pathfinder search failed (%s); using context-resolve\n", error.what());
+    }
+  }
   const auto encoded = percentEncode(query);
   JSON result{{"query", query}, {"tracks", JSON::array()}, {"albums", JSON::array()}, {"artists", JSON::array()}, {"loading", true}};
   auto raw = contextTrackURIs("spotify:search:" + encoded, nullptr);

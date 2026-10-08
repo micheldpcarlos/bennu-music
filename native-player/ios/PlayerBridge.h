@@ -18,6 +18,7 @@ typedef struct IPadPlayerSnapshot {
 // kind: "search" (query), "album" (id), "artist" (id), "playlist" (id), "collection", "recent",
 // "profile", "context" (uri), "tracks" (comma-separated uris). Returns 0 when the player is not ready.
 uint64_t ipad_catalog_request(const char* kind, const char* argument);
+int ipad_catalog_kind_enabled(const char* kind);   // 0 when the flags file or the circuit breaker paused this kind
 // Copies the latest JSON for a request when its revision is newer than `since`. Returns the new
 // revision, or 0 if nothing changed / unknown request / buffer too small. *done is set when final.
 uint64_t ipad_catalog_poll(uint64_t request, uint64_t since, char* output, uint32_t capacity, int* done);

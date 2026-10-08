@@ -93,6 +93,14 @@ bool kindDisabledByFlags(const std::string& kind) {
 }
 const char* kUnavailable = "{\"error\":\"Browsing is unavailable right now. Your phone can still pick Bennu Music in Spotify.\",\"unavailable\":true,\"loading\":false}";
 }
+int ipad_catalog_kind_enabled(const char* kind) {
+  if (!kind || !*kind) return 0;
+  std::string kindText(kind);
+  if (kindDisabledByFlags(kindText)) return 0;
+  std::lock_guard<std::mutex> lock(healthMutex);
+  auto found = kindHealth.find(kindText);
+  return found == kindHealth.end() || found->second.pausedUntil <= std::chrono::steady_clock::now() ? 1 : 0;
+}
 uint64_t ipad_catalog_request(const char* kind, const char* argument) {
   if (!kind || !*kind) return 0;
   std::string kindText(kind), argumentText(argument ? argument : "");
