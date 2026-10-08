@@ -94,6 +94,36 @@ std::string cleanBiography(std::string text) {
 }
 int yearOf(const JSON& object) { return object.is_object() && object.count("date") ? static_cast<int>(num(object["date"], "year")) : 0; }
 }
+// Minimal protobuf wire format helpers: enough for the extended-metadata request and response.
+namespace proto {
+struct Field { unsigned number; unsigned type; uint64_t varint; std::string bytes; };
+bool readVarint(const std::string& d, size_t& i, uint64_t& out) {
+  out = 0; int shift = 0;
+  while (i < d.size() && shift < 64) { unsigned char b = d[i++]; out |= static_cast<uint64_t>(b & 0x7f) << shift; if (!(b & 0x80)) return true; shift += 7; }
+  return false;
+}
+// Iterates fields of a message; unknown wire types abort.
+bool each(const std::string& d, const std::function<void(const Field&)>& fn) {
+  size_t i = 0;
+  while (i < d.size()) {
+    uint64_t key; if (!readVarint(d, i, key)) return false;
+    Field f; f.number = static_cast<unsigned>(key >> 3); f.type = key & 7; f.varint = 0;
+    if (f.type == 0) { if (!readVarint(d, i, f.varint)) return false; }
+    else if (f.type == 2) { uint64_t len; if (!readVarint(d, i, len) || i + len > d.size()) return false; f.bytes = d.substr(i, len); i += len; }
+    else if (f.type == 1) { if (i + 8 > d.size()) return false; i += 8; }
+    else if (f.type == 5) { if (i + 4 > d.size()) return false; i += 4; }
+    else return false;
+    fn(f);
+  }
+  return true;
+}
+std::string varint(uint64_t n) { std::string o; do { unsigned char b = n & 0x7f; n >>= 7; o += static_cast<char>(n ? b | 0x80 : b); } while (n); return o; }
+std::string lengthDelimited(unsigned number, const std::string& data) { return varint((number << 3) | 2) + varint(data.size()) + data; }
+std::string varintField(unsigned number, uint64_t n) { return varint(number << 3) + varint(n); }
+std::string hex(const std::string& bytes) { static const char* d = "0123456789abcdef"; std::string o; for (unsigned char b : bytes) { o += d[b >> 4]; o += d[b & 15]; } return o; }
+int64_t zigzag(uint64_t n) { return static_cast<int64_t>(n >> 1) ^ -static_cast<int64_t>(n & 1); }
+}
+
 std::string hexFromBase62(const std::string& id) {
   if (!validID(id)) return {};
   unsigned char bytes[16] = {0};
@@ -188,10 +218,94 @@ static JSON trackFromMetadata(const std::string& uri, const JSON& meta) {
   track["disc"] = num(meta, "disc_number");
   return track;
 }
+// Decodes one metadata Track message (librespot proto numbering) into the UI track shape.
+static bool trackFromProto(const std::string& uri, const std::string& data, JSON& track) {
+  std::string name, albumName, albumGid, art, small; JSON artists = JSON::array(); std::string artistNames;
+  int64_t number = 0, disc = 0, duration = 0; bool ok = true;
+  ok = proto::each(data, [&](const proto::Field& f) {
+    switch (f.number) {
+      case 2: name = f.bytes; break;
+      case 3:  // album { gid=1, name=2, cover_group=17 { image=1 { file_id=1, size=2 } } }
+        proto::each(f.bytes, [&](const proto::Field& a) {
+          if (a.number == 1) albumGid = proto::hex(a.bytes);
+          else if (a.number == 2) albumName = a.bytes;
+          else if (a.number == 17) proto::each(a.bytes, [&](const proto::Field& g) {
+            if (g.number != 1) return;
+            std::string file; uint64_t size = 0;
+            proto::each(g.bytes, [&](const proto::Field& im) { if (im.number == 1) file = proto::hex(im.bytes); else if (im.number == 2) size = im.varint; });
+            if (file.size() != 40) return;
+            if (size == 0 && art.empty()) art = file;        // DEFAULT
+            else if (size == 1 && small.empty()) small = file;  // SMALL
+            else if (art.empty()) art = file;
+          });
+        }); break;
+      case 4: {  // artist { gid=1, name=2 }
+        std::string gid, artistName;
+        proto::each(f.bytes, [&](const proto::Field& ar) { if (ar.number == 1) gid = proto::hex(ar.bytes); else if (ar.number == 2) artistName = ar.bytes; });
+        if (!artistName.empty()) {
+          if (artists.size() < 4 && gid.size() == 32) artists.push_back({{"name", artistName}, {"uri", "spotify:artist:" + base62FromHex(gid)}});
+          if (artists.size() <= 3) { if (!artistNames.empty()) artistNames += ", "; artistNames += artistName; }
+        }
+        break; }
+      case 5: number = proto::zigzag(f.varint); break;
+      case 6: disc = proto::zigzag(f.varint); break;
+      case 7: duration = proto::zigzag(f.varint); break;
+      default: break;
+    }
+  });
+  if (!ok || name.empty()) return false;
+  if (small.empty()) small = art;
+  track = {{"uri", uri}, {"id", uri.substr(14)}, {"title", name.substr(0, 512)}, {"artist", artistNames.substr(0, 512)}, {"artists", artists},
+           {"album", albumName.substr(0, 512)}, {"artwork", imageURL(art)}, {"artworkSmall", imageURL(small)},
+           {"duration", duration}, {"number", number}, {"disc", disc}};
+  if (albumGid.size() == 32) track["albumUri"] = "spotify:album:" + base62FromHex(albumGid);
+  return true;
+}
+size_t Catalog::hydrateBatch(const std::vector<std::string>& uris) {
+  size_t stored = 0;
+  for (size_t start = 0; start < uris.size(); start += 50) {
+    std::vector<std::string> chunk(uris.begin() + start, uris.begin() + std::min(uris.size(), start + 50));
+    // BatchedEntityRequest { header=1 { country=1, catalogue=2 }, entity_request=2 [ { entity_uri=1, query=2 [ { extension_kind=1 (TRACK_V4=1) } ] } ] }
+    std::string body = proto::lengthDelimited(1, proto::lengthDelimited(1, "BR") + proto::lengthDelimited(2, "premium"));
+    for (const auto& uri : chunk) body += proto::lengthDelimited(2, proto::lengthDelimited(1, uri) + proto::lengthDelimited(2, proto::varintField(1, 1)));
+    SpclientClient::Response response;
+    try { response = client->post("/extended-metadata/v0/extended-metadata", body, "application/x-protobuf", "application/x-protobuf"); }
+    catch (...) { std::fprintf(stderr, "CATALOG: batch metadata request failed\n"); return stored; }
+    if (response.status != 200) { std::fprintf(stderr, "CATALOG: batch metadata HTTP=%d\n", response.status); return stored; }
+    // BatchedExtensionResponse { extended_metadata=1 [ { extension_kind=1, extension_data=2 [ { entity_uri=1, header=2, extension_data=3 Any{type_url=1, value=2} } ] } ] }
+    size_t before = stored;
+    proto::each(response.body, [&](const proto::Field& top) {
+      if (top.number != 1) return;
+      proto::each(top.bytes, [&](const proto::Field& arr) {
+        if (arr.number != 2) return;
+        std::string uri, payload;
+        proto::each(arr.bytes, [&](const proto::Field& e) {
+          if (e.number == 1) uri = e.bytes;
+          else if (e.number == 3) proto::each(e.bytes, [&](const proto::Field& any) { if (any.number == 2) payload = any.bytes; });
+        });
+        if (uri.size() != 36 || uri.compare(0, 14, "spotify:track:") != 0 || payload.empty()) return;
+        JSON track;
+        if (trackFromProto(uri, payload, track)) { storeTrack(uri, track.dump()); ++stored; }
+      });
+    });
+    std::fprintf(stderr, "CATALOG: batch metadata chunk=%lu decoded=%lu\n", static_cast<unsigned long>(chunk.size()), static_cast<unsigned long>(stored - before));
+    if (stored == before) return stored;  // nothing decoded: let the caller fall back
+  }
+  return stored;
+}
 void Catalog::hydrate(const std::vector<std::string>& uris, const std::function<void(size_t, bool)>& progress) {
   std::vector<std::string> missing;
   for (const auto& uri : uris) { std::string ignored; if (!cachedTrack(uri, ignored)) missing.push_back(uri); }
   if (missing.empty()) { progress(uris.size(), true); return; }
+  if (missing.size() >= 3) {
+    // One round trip per 50 tracks; anything the batch did not return falls through to per-track fetches.
+    hydrateBatch(missing);
+    std::vector<std::string> still;
+    for (const auto& uri : missing) { std::string ignored; if (!cachedTrack(uri, ignored)) still.push_back(uri); }
+    progress(uris.size() - still.size(), still.empty());
+    if (still.empty()) return;
+    missing.swap(still);
+  }
   std::atomic<size_t> next{0}, loaded{0};
   std::mutex progressMutex;
   auto worker = [&](SpclientClient* http) {

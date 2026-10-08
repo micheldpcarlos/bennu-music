@@ -34,6 +34,7 @@ class Catalog {
   std::string getJSON(const std::string& path, int& status);
   std::vector<std::string> contextTrackURIs(const std::string& uri, std::string* metadataJSON);
   void hydrate(const std::vector<std::string>& uris, const std::function<void(size_t loaded, bool done)>& progress);
+  size_t hydrateBatch(const std::vector<std::string>& uris);   // extended-metadata, up to 50 per call; returns tracks stored
   bool cachedTrack(const std::string& uri, std::string& json);
   void storeTrack(const std::string& uri, const std::string& json);
   std::string trackJSON(const std::string& uri);
