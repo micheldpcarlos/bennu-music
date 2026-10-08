@@ -6,10 +6,13 @@
 #import "PlayerModel.h"
 #import "ImageCache.h"
 #import "SetupViewController.h"
-enum { HomeRecent = 0, HomePlaylists, HomeCount };
+enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
 @interface HomeViewController () <UITableViewDataSource, UITableViewDelegate>
 @property(nonatomic, strong) NSArray* recent;
 @property(nonatomic, strong) NSArray* playlists;
+@property(nonatomic, strong) NSArray* radios;
+@property(nonatomic, strong) NSArray* releases;
+@property(nonatomic, strong) CatalogRequest* homeRequest;
 @property(nonatomic, strong) CatalogRequest* recentRequest;
 @property(nonatomic, strong) CatalogRequest* profileRequest;
 @property(nonatomic, strong) CatalogRequest* playlistsRequest;
@@ -58,7 +61,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   PlayerModel* model = [PlayerModel shared];
   IPadPlayerSnapshot snapshot = model.snapshot;
   if (snapshot.state == IPadReady && !self.loadedOnce) { self.loadedOnce = YES; [self load]; }
-  if (snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; [self.accountButton setImage:[PhoenixTheme icon:@"account" size:30 color:[PhoenixTheme text]] forState:UIControlStateNormal]; self.recent = nil; self.playlists = nil; [self renderGreeting]; [self.table reloadData]; }
+  if (snapshot.state == IPadWaiting && self.loadedOnce) { self.loadedOnce = NO; self.radios = nil; self.releases = nil; [self.accountButton setImage:[PhoenixTheme icon:@"account" size:30 color:[PhoenixTheme text]] forState:UIControlStateNormal]; self.recent = nil; self.playlists = nil; [self renderGreeting]; [self.table reloadData]; }
   if (snapshot.state == IPadFailed) self.status.text = [NSString stringWithFormat:@"%s Close and reopen the app to reconnect.", snapshot.error];
   else if (snapshot.reconnecting) self.status.text = @"Connection lost. Reconnecting to Spotify…";
   else if (snapshot.state == IPadConnecting) self.status.text = @"Connecting to Spotify…";
@@ -70,7 +73,7 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   __weak HomeViewController* weakSelf = self;
   self.recentRequest = [[CatalogClient shared] request:@"recent" argument:@"" update:^(NSDictionary* json, BOOL done) {
     HomeViewController* owner = weakSelf; if (!owner) return;
-    if (json[@"error"]) { owner.status.text = json[@"error"]; return; }
+    if (json[@"error"]) { owner.status.text = json[@"error"]; if ([json[@"unavailable"] boolValue]) owner.status.textColor = [PhoenixTheme green]; return; }
     NSMutableArray* items = [NSMutableArray arrayWithObject:@{@"uri": @"collection", @"name": @"Liked Songs", @"subtitle": @"Playlist", @"artwork": @"", @"type": @"collection"}];
     if ([json[@"items"] isKindOfClass:NSArray.class]) [items addObjectsFromArray:json[@"items"]];
     owner.recent = items;
@@ -90,6 +93,13 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
       [owner renderGreeting];
       owner.greeting.text = [NSString stringWithFormat:@"%@, %@", owner.greeting.text, [name componentsSeparatedByString:@" "].firstObject];
     }
+  }];
+  self.homeRequest = [[CatalogClient shared] request:@"home" argument:@"" update:^(NSDictionary* json, BOOL done) {
+    HomeViewController* owner = weakSelf; if (!owner) return;
+    if (json[@"error"]) return;
+    owner.radios = [json[@"radios"] isKindOfClass:NSArray.class] ? json[@"radios"] : @[];
+    owner.releases = [json[@"releases"] isKindOfClass:NSArray.class] ? json[@"releases"] : @[];
+    [owner.table reloadData];
   }];
   self.playlistsRequest = [[CatalogClient shared] request:@"playlists" argument:@"" update:^(NSDictionary* json, BOOL done) {
     HomeViewController* owner = weakSelf; if (!owner) return;
@@ -125,20 +135,24 @@ enum { HomeRecent = 0, HomePlaylists, HomeCount };
   [self presentViewController:setup animated:YES completion:nil];
 }
 - (NSInteger)numberOfSectionsInTableView:(UITableView*)table { return HomeCount; }
-- (NSInteger)tableView:(UITableView*)table numberOfRowsInSection:(NSInteger)section { return (section == HomeRecent ? self.recent.count : self.playlists.count) ? 1 : 0; }
+- (NSArray*)itemsFor:(NSInteger)section {
+  switch (section) { case HomeRecent: return self.recent; case HomePlaylists: return self.playlists; case HomeRadios: return self.radios; default: return self.releases; }
+}
+- (NSInteger)tableView:(UITableView*)table numberOfRowsInSection:(NSInteger)section { return [self itemsFor:section].count ? 1 : 0; }
 - (CGFloat)tableView:(UITableView*)table heightForHeaderInSection:(NSInteger)section { return [self tableView:table numberOfRowsInSection:section] ? 48 : 0; }
 - (UIView*)tableView:(UITableView*)table viewForHeaderInSection:(NSInteger)section {
   SectionHeader* header = [table dequeueReusableHeaderFooterViewWithIdentifier:@"header"];
-  header.titleLabel.text = section == HomeRecent ? @"Recently played" : @"Your playlists";
+  header.titleLabel.text = @[@"Recently played", @"Your playlists", @"Made for you", @"New releases for you"][section];
   return header;
 }
 - (CGFloat)tableView:(UITableView*)table heightForRowAtIndexPath:(NSIndexPath*)path { return [ShelfCell height]; }
 - (UITableViewCell*)tableView:(UITableView*)table cellForRowAtIndexPath:(NSIndexPath*)path {
   ShelfCell* shelf = [table dequeueReusableCellWithIdentifier:@"shelf" forIndexPath:path];
-  shelf.items = path.section == HomeRecent ? self.recent : self.playlists;
+  shelf.items = [self itemsFor:path.section];
   shelf.onSelect = ^(NSDictionary* item) {
     NSString* uri = item[@"uri"];
     if ([uri isEqualToString:@"collection"]) uri = @"spotify:user:me:collection";
+    if ([item[@"type"] isEqualToString:@"station"]) { [[PlayerModel shared] playContext:uri name:item[@"name"] shuffle:NO]; return; }
     PhoenixOpen(uri, item[@"name"], item[@"artwork"]);
   };
   return shelf;

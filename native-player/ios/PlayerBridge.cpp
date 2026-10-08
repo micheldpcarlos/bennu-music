@@ -77,10 +77,40 @@ void publishCatalog(uint64_t id, const std::string& json, bool done) {
 }
 }
 
+namespace {
+// Per-kind health: a flags file can switch a kind off; three consecutive failures pause it for five minutes.
+struct KindHealth { int failures = 0; std::chrono::steady_clock::time_point pausedUntil{}; };
+std::mutex healthMutex;
+std::map<std::string, KindHealth> kindHealth;
+bool kindDisabledByFlags(const std::string& kind) {
+  try {
+    std::ifstream file("/var/mobile/Documents/phoenix-catalog-flags.json");
+    if (!file) return false;
+    auto flags = nlohmann::json::parse(file);
+    return flags.is_object() && flags.count(kind) && flags[kind].is_boolean() && !flags[kind].get<bool>();
+  } catch (...) { return false; }
+}
+const char* kUnavailable = "{\"error\":\"Browsing is unavailable right now. Your phone can still pick Phoenix Player in Spotify.\",\"unavailable\":true,\"loading\":false}";
+}
 uint64_t ipad_catalog_request(const char* kind, const char* argument) {
   if (!kind || !*kind) return 0;
   std::string kindText(kind), argumentText(argument ? argument : "");
   if (kindText.size() > 32 || argumentText.size() > 20000) return 0;
+  bool paused = kindDisabledByFlags(kindText);
+  {
+    std::lock_guard<std::mutex> lock(healthMutex);
+    auto& health = kindHealth[kindText];
+    if (!paused && health.pausedUntil > std::chrono::steady_clock::now()) paused = true;
+  }
+  if (paused) {
+    uint64_t id;
+    std::lock_guard<std::mutex> lock(catalogMutex);
+    id = catalogNextId++;
+    CatalogEntry entry; entry.created = id; entry.json = kUnavailable; entry.done = true; entry.revision = ++catalogRevision;
+    catalogResults[id] = entry;
+    std::fprintf(stderr, "CATALOG: %s paused (kill switch or repeated failures)\n", kindText.c_str());
+    return id;
+  }
   std::function<void(const std::string&, const std::string&, const ipad_player::CatalogPublish&)> service;
   {
     std::lock_guard<std::mutex> lock(bridgeMutex);
@@ -97,17 +127,31 @@ uint64_t ipad_catalog_request(const char* kind, const char* argument) {
   }
   std::thread([service, id, kindText, argumentText]() {
     const auto started = Clock::now();
+    auto recordFailure = [kindText]() {
+      std::lock_guard<std::mutex> lock(healthMutex);
+      auto& health = kindHealth[kindText];
+      if (++health.failures >= 3) {
+        health.pausedUntil = std::chrono::steady_clock::now() + std::chrono::minutes(5);
+        health.failures = 0;
+        std::fprintf(stderr, "CATALOG: %s paused for 5 minutes after repeated failures\n", kindText.c_str());
+      }
+    };
     try {
       service(kindText, argumentText, [id, kindText, started](const std::string& json, bool done) {
         publishCatalog(id, json, done);
-        if (done) std::fprintf(stderr, "CATALOG: %s done bytes=%lu ms=%lld\n", kindText.c_str(), static_cast<unsigned long>(json.size()),
-            static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count()));
+        if (done) {
+          std::fprintf(stderr, "CATALOG: %s done bytes=%lu ms=%lld\n", kindText.c_str(), static_cast<unsigned long>(json.size()),
+              static_cast<long long>(std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count()));
+          std::lock_guard<std::mutex> lock(healthMutex); kindHealth[kindText].failures = 0;
+        }
       });
     } catch (const std::exception& error) {
       std::fprintf(stderr, "CATALOG: %s request failed: %s\n", kindText.c_str(), error.what());
+      recordFailure();
       publishCatalog(id, std::string("{\"error\":\"") + "Could not load from Spotify." + "\",\"loading\":false}", true);
     } catch (...) {
       std::fprintf(stderr, "CATALOG: %s request failed\n", kindText.c_str());
+      recordFailure();
       publishCatalog(id, "{\"error\":\"Could not load from Spotify.\",\"loading\":false}", true);
     }
   }).detach();

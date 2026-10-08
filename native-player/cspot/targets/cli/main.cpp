@@ -348,6 +348,7 @@ int main(int argc, char** argv) {
         else if (kind == "recent") catalog->recent(publish);
         else if (kind == "profile") catalog->profile(publish);
         else if (kind == "playlists") catalog->playlists(publish);
+        else if (kind == "home") catalog->home(publish);
         else if (kind == "context") catalog->context(argument, publish);
         else if (kind == "tracks") {
           std::vector<std::string> uris; std::string current;

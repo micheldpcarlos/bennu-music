@@ -347,6 +347,14 @@ void Catalog::album(const std::string& id, const Publish& publish) {
 }
 
 std::string Catalog::artistSummary(const std::string& gidHex) {
+  { std::lock_guard<std::mutex> lock(cacheMutex); auto found = artistCache.find(gidHex); if (found != artistCache.end()) return found->second; }
+  auto computed = artistSummaryUncached(gidHex);
+  std::lock_guard<std::mutex> lock(cacheMutex);
+  if (artistCache.size() > 200) artistCache.clear();
+  artistCache[gidHex] = computed;
+  return computed;
+}
+std::string Catalog::artistSummaryUncached(const std::string& gidHex) {
   int status = 0;
   auto body = getJSON("/metadata/4/artist/" + gidHex + "?market=from_token", status);
   if (status != 200) throw std::runtime_error("artist HTTP " + std::to_string(status));
@@ -546,6 +554,59 @@ void Catalog::playlists(const Publish& publish) {
   }
   std::fprintf(stderr, "CATALOG: playlists=%lu\n", static_cast<unsigned long>(list.size()));
   publish(JSON{{"playlists", list}, {"loading", false}}.dump(), true);
+}
+void Catalog::home(const Publish& publish) {
+  const auto username = context_->config.username;
+  int status = 0;
+  auto body = getJSON("/recently-played/v3/user/" + username + "/recently-played?format=json&limit=30", status);
+  if (status != 200) throw std::runtime_error("recent HTTP " + std::to_string(status));
+  auto document = JSON::parse(body);
+  // Artists behind what was played recently: artist contexts directly, album contexts via the album.
+  std::vector<std::string> artistIds; std::set<std::string> seen;
+  auto addArtist = [&](const std::string& uri) {
+    if (uri.compare(0, 15, "spotify:artist:") != 0 || !validID(uri.substr(15)) || !seen.insert(uri).second) return;
+    artistIds.push_back(uri.substr(15));
+  };
+  if (document.count("playContexts") && document["playContexts"].is_array())
+    for (const auto& entry : document["playContexts"]) {
+      if (artistIds.size() >= 8) break;
+      auto uri = str(entry, "uri", 128);
+      try {
+        if (uri.compare(0, 15, "spotify:artist:") == 0) addArtist(uri);
+        else if (uri.compare(0, 14, "spotify:album:") == 0 && validID(uri.substr(14))) {
+          auto album = JSON::parse(albumSummary(hexFromBase62(uri.substr(14))));
+          addArtist(str(album, "artistUri", 64));
+        } else {
+          // playlists and the liked-songs collection: use the artist of the last played track
+          auto track = str(entry, "lastPlayedTrackUri", 64);
+          if (track.size() == 36 && track.compare(0, 14, "spotify:track:") == 0 && validID(track.substr(14))) {
+            hydrate({track}, [](size_t, bool) {});
+            auto json = trackJSON(track);
+            if (!json.empty()) { auto t = JSON::parse(json); if (t.count("artists") && t["artists"].is_array() && !t["artists"].empty()) addArtist(str(t["artists"][0], "uri", 64)); }
+          }
+        }
+      } catch (...) {}
+    }
+  JSON radios = JSON::array(), releases = JSON::array();
+  for (const auto& id : artistIds) {
+    try {
+      auto artist = JSON::parse(artistSummary(hexFromBase62(id)));
+      radios.push_back({{"uri", "spotify:station:artist:" + id}, {"name", artist["name"].get<std::string>() + " Radio"}, {"subtitle", "Based on " + artist["name"].get<std::string>()}, {"artwork", artist["image"]}, {"type", "station"}});
+      publish(JSON{{"radios", radios}, {"releases", releases}, {"loading", true}}.dump(), false);
+      std::vector<std::string> gids = artist["albumGids"].get<std::vector<std::string>>();
+      std::vector<std::string> singles = artist["singleGids"].get<std::vector<std::string>>();
+      if (!singles.empty()) gids.insert(gids.begin(), singles[0]);
+      int bestYear = 0; JSON best;
+      for (size_t i = 0; i < gids.size() && i < 2; ++i) {
+        auto album = JSON::parse(albumSummary(gids[i])); album.erase("uris");
+        int year = album.value("year", 0);
+        if (year > bestYear) { bestYear = year; best = album; }
+      }
+      if (!best.is_null()) releases.push_back({{"uri", best["uri"]}, {"name", best["name"]}, {"subtitle", best["artist"].get<std::string>() + (bestYear ? " • " + std::to_string(bestYear) : "")}, {"artwork", best["artwork"]}, {"type", "album"}, {"year", bestYear}});
+    } catch (...) { std::fprintf(stderr, "CATALOG: home artist failed\n"); }
+  }
+  std::stable_sort(releases.begin(), releases.end(), [](const JSON& a, const JSON& b) { return a.value("year", 0) > b.value("year", 0); });
+  publish(JSON{{"radios", radios}, {"releases", releases}, {"loading", false}}.dump(), true);
 }
 void Catalog::profile(const Publish& publish) {
   const auto username = context_->config.username;
