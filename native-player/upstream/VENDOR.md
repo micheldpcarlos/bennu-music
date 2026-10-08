@@ -13,7 +13,7 @@ commit at the time, for reference or for re-deriving the changes on a newer upst
 | `native-player/compat/vendor/string-view-lite` | https://github.com/nonstd-lite/string-view-lite | `59b11b7` | unmodified |
 | `native-player/compat/vendor/variant` | https://github.com/mpark/variant | `23cb94f` | unmodified |
 
-Licenses: cspot and bell are MIT; see their LICENSE files in place. The nonstd-lite libraries are
+Licenses: cspot is GPL-3.0-or-later (its LICENSE.md is in place). bell ships no license file; it is by the same authors and is distributed inside cspot, and this project treats it under cspot's GPL-3.0 terms. See THIRD_PARTY.md at the repository root for the full list. The nonstd-lite libraries are
 Boost Software License 1.0; mpark/variant is Boost Software License 1.0. New code in this
 project is GPL-3.0-or-later as marked in file headers.
 
@@ -23,3 +23,6 @@ bell's own external submodules, unmodified:
 - `native-player/cspot/cspot/bell/external/nlohmann_json` — https://github.com/nlohmann/json (bell submodule, local changes: 0 files; docs/tests/tools excluded)
 - `native-player/deps/mbedtls-3.6.7` — https://github.com/Mbed-TLS/mbedtls.git tag `mbedtls-3.6.7` (`068ff08`), unmodified (an earlier patch installer had appended notes to its README; reverted)
 - `native-player/deps/mbedtls-3.6.7/framework` — https://github.com/Mbed-TLS/mbedtls-framework (mbedtls submodule, local changes: 0 files)
+
+
+Pruned on 2026-10-08 to keep the repository small: bell externals the iOS build does not use (opus, opencore-aacdec, alac, portaudio, mqtt, fmt's sources and docs), test suites, examples and documentation of nanopb, cJSON, tremor, nlohmann_json and the compat headers, the esp32 target, and Mbed TLS's test framework data, docs and programs. Restore from upstream at the pinned commits if ever needed.
