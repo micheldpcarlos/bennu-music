@@ -47,7 +47,7 @@ installed list.
 
 | Home | Search |
 |---|---|
-| ![Home](docs/screenshots/home.png) | ![Search](docs/screenshots/search-browse.png) |
+| ![Home](docs/screenshots/home.png) | ![Search](docs/screenshots/search-results.png) |
 
 | Album | Your Library |
 |---|---|
