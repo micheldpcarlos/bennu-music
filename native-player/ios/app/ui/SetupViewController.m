@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "SetupViewController.h"
+#import "SettingsViewController.h"
 #import "BennuTheme.h"
 #import "PlayerModel.h"
 #import "../../auth/DeviceAuth.h"
@@ -22,6 +23,7 @@
 @property(nonatomic, strong) UILabel* connectHint;
 @property(nonatomic, strong) UIButton* connectButton;
 @property(nonatomic, strong) UIButton* signOutButton;
+@property(nonatomic, strong) UIButton* settingsButton;
 @property(nonatomic, strong) UIImageView* avatar;
 @property(nonatomic, strong) UIView* visibilityCard;
 @property(nonatomic, strong) UILabel* visibilityTitle;
@@ -55,6 +57,12 @@
   [self.signOutButton setTitleColor:[BennuTheme text] forState:UIControlStateNormal];
   [self.signOutButton addTarget:self action:@selector(signOut) forControlEvents:UIControlEventTouchUpInside];
   self.signOutButton.hidden = YES;
+  self.settingsButton = [BennuTheme pillButton:@"Settings"];
+  self.settingsButton.backgroundColor = [BennuTheme card];
+  [self.settingsButton setTitleColor:[BennuTheme text] forState:UIControlStateNormal];
+  [self.settingsButton addTarget:self action:@selector(openSettings) forControlEvents:UIControlEventTouchUpInside];
+  self.settingsButton.hidden = YES;
+  [self.view addSubview:self.settingsButton];
   [self.view addSubview:self.signOutButton];
   self.avatar = [[UIImageView alloc] init];
   self.avatar.contentMode = UIViewContentModeScaleAspectFill; self.avatar.clipsToBounds = YES; self.avatar.layer.cornerRadius = 40;
@@ -103,7 +111,7 @@
 - (void)applyMode {
   BOOL ready = [PlayerModel shared].ready;
   self.qrCard.hidden = ready; self.connectCard.hidden = ready;
-  self.signOutButton.hidden = !ready;
+  self.signOutButton.hidden = !ready; self.settingsButton.hidden = !ready;
   self.avatar.hidden = !ready;
   if (ready) [[ImageCache shared] load:[PlayerModel shared].accountImage into:self.avatar placeholder:[BennuTheme icon:@"account" size:80 color:[BennuTheme subtext]]];
   [self.view setNeedsLayout];
@@ -126,6 +134,7 @@
   self.accountLabel.numberOfLines = narrow ? 3 : 2;
   self.accountLabel.frame = signedIn ? (narrow ? CGRectMake(32, 192, width - 64, 60) : CGRectMake(128, 110, width - 160, 44)) : CGRectMake(32, 84, width - 64, 44);
   self.signOutButton.frame = narrow && signedIn ? CGRectMake(32, 258, 110, 32) : CGRectMake(128, 156, 110, 32);
+  self.settingsButton.frame = narrow && signedIn ? CGRectMake(150, 258, 110, 32) : CGRectMake(246, 156, 110, 32);
   CGFloat top = 124, gap = 24;
   CGFloat cardWidth = wide ? (width - 32 * 2 - gap) / 2 : width - 64;
   CGFloat inner = cardWidth - 48, qr = MIN(220, inner);
@@ -210,6 +219,11 @@
   if (![phase isEqualToString:@"failed"]) self.retryButton.hidden = YES;
 }
 - (void)retryLogin { if (!ipad_device_auth_retry()) self.qrStatus.text = @"Nothing to retry. Get a new code."; }
+- (void)openSettings {
+  UIViewController* settings = [[SettingsViewController alloc] init];
+  settings.modalPresentationStyle = UIModalPresentationFullScreen;
+  [self presentViewController:settings animated:YES completion:nil];
+}
 - (void)signOut {
   UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"Sign out of Spotify?" message:@"The saved account is removed from this iPad." preferredStyle:UIAlertControllerStyleAlert];
   [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];

@@ -24,6 +24,9 @@ class Catalog {
   std::string pathfinderRaw(const std::string& op, const std::string& variablesJSON);
   void homeFeed(const Publish& publish);           // the web player's personalized Home sections
   void library(const Publish& publish);            // everything saved: playlists, albums, artists
+  void updateCheck(const std::string& currentVersion, const Publish& publish);   // GitHub latest release
+  void downloadUpdate(const std::string& url, const Publish& publish);           // .deb into /var/mobile/Downloads
+  void clearCache(const Publish& publish);
   void album(const std::string& id, const Publish& publish);
   void artist(const std::string& id, const Publish& publish);
   void playlist(const std::string& id, const Publish& publish);

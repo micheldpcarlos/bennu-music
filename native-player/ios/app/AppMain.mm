@@ -38,7 +38,9 @@ static void* runEngine(void*) {
   @autoreleasepool {
     char name[] = "ipad-media-player";
     char bitrate[] = "-b";
-    char value[] = "160";
+    char value[8] = "160";
+    NSInteger chosen = [NSUserDefaults.standardUserDefaults integerForKey:@"BennuBitrate"];   // Settings > Audio quality
+    if (chosen == 96 || chosen == 320) std::snprintf(value, sizeof value, "%ld", (long)chosen);
     char* arguments[] = {name, bitrate, value, nullptr};
     ipad_player_waiting();
     engineStartedAt = std::chrono::steady_clock::now();

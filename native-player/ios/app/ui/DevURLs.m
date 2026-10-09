@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #import "DevURLs.h"
 #import "CatalogClient.h"
+#import "SettingsViewController.h"
 #import <UIKit/UIKit.h>
 #import "MainTabController.h"
 #import "Navigation.h"
@@ -111,6 +112,18 @@ BOOL BennuHandleURL(NSURL* url) {
     [search cancel];
   } else if ([action isEqualToString:@"volume"]) {
     ipad_player_volume((uint32_t)[query[@"v"] intValue]);   // as if the phone moved the slider
+  } else if ([action isEqualToString:@"catalog"]) {
+    // Any catalog kind: bennu://catalog?kind=download%26arg=<url>. Logs the top-level keys of the result.
+    static CatalogRequest* generic;
+    generic = [[CatalogClient shared] request:query[@"kind"] ?: @"" argument:query[@"arg"] ?: @"" update:^(NSDictionary* json, BOOL done) {
+      if (!done) return;
+      fprintf(stderr, "DEV: catalog %s -> %s\n", [query[@"kind"] UTF8String] ?: "", [[json description] UTF8String]);
+    }];
+  } else if ([action isEqualToString:@"settings"]) {
+    if (tabs.presentedViewController) [tabs dismissViewControllerAnimated:NO completion:nil];
+    UIViewController* settings = [[SettingsViewController alloc] init];
+    settings.modalPresentationStyle = UIModalPresentationFullScreen;
+    [tabs presentViewController:settings animated:NO completion:nil];
   } else if ([action isEqualToString:@"pathfinder"]) {
     // bennu://pathfinder (status) or bennu://pathfinder?action=refresh (force a hash discovery)
     static CatalogRequest* probe; 

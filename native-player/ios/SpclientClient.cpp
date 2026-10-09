@@ -93,16 +93,17 @@ SpclientClient::Response SpclientClient::readResponse(bell::SocketStream& s, siz
     if (parsed == -1) throw std::runtime_error("bad response");
     if (head.size() > 16384) throw std::runtime_error("headers too large");
   }
+  Response response; response.status = status;
   long contentLength = -1; bool chunked = false;
   for (size_t i = 0; i < headerCount; ++i) {
     std::string name(headers[i].name, headers[i].name_len), value(headers[i].value, headers[i].value_len);
     for (auto& c : name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     for (auto& c : value) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     if (name == "content-length") contentLength = std::atol(value.c_str());
+    else if (name == "location") response.location = std::string(headers[i].value, headers[i].value_len);
     else if (name == "transfer-encoding" && value.find("chunked") != std::string::npos) chunked = true;
     else if (name == "connection" && value.find("close") != std::string::npos) close = true;
   }
-  Response response; response.status = status;
   if (chunked) {
     for (;;) {
       char line[64]; s.getline(line, sizeof(line));
@@ -150,6 +151,17 @@ SpclientClient::Response SpclientClient::request(const std::string& method, cons
 // Used for hosts the keep-alive client is not bound to (web player, CDN, token service).
 SpclientClient::Response SpclientClient::fetch(const std::string& method, const std::string& url, const std::vector<std::pair<std::string, std::string>>& headers,
                                                const std::string& body, size_t limit, int timeoutSeconds) {
+  Response response = fetchOnce(method, url, headers, body, limit, timeoutSeconds);
+  for (int hop = 0; hop < 3 && method == "GET" && (response.status == 301 || response.status == 302 || response.status == 303 || response.status == 307) && !response.location.empty(); ++hop) {
+    // Drop the Authorization header when leaving the original host.
+    std::vector<std::pair<std::string, std::string>> next;
+    for (const auto& h : headers) if (h.first != "Authorization" || response.location.find(url.substr(0, url.find('/', 8))) == 0) next.push_back(h);
+    response = fetchOnce(method, response.location, next, body, limit, timeoutSeconds);
+  }
+  return response;
+}
+SpclientClient::Response SpclientClient::fetchOnce(const std::string& method, const std::string& url, const std::vector<std::pair<std::string, std::string>>& headers,
+                                                   const std::string& body, size_t limit, int timeoutSeconds) {
   if (url.compare(0, 8, "https://") != 0) throw std::invalid_argument("https only");
   auto hostStart = 8; auto pathStart = url.find('/', hostStart);
   std::string hostPort = url.substr(hostStart, pathStart == std::string::npos ? std::string::npos : pathStart - hostStart);

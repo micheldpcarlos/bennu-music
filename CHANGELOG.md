@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0 (2026-10-08)
+
+- **Settings** (Account › Settings): audio quality (96 / 160 / 320 kbps, restarts the player),
+  network visibility, clear cached data with its size, version and update check, diagnostics
+  export, links to the project.
+- **Updates.** Home checks GitHub once per launch and says when a newer release exists.
+  Settings downloads the `.deb` to `/var/mobile/Downloads` and opens it in Filza for a
+  one-tap install, with the `dpkg` command shown when Filza is absent.
+- **Cydia / Sileo source** at https://micheldpcarlos.github.io/bennu-music/ for installs and
+  updates through a package manager.
+- **Diagnostics export** writes a copy of the player's log with credentials removed and opens
+  the share sheet, for bug reports.
+- A daily GitHub Action refreshes `config/pathfinder.json` from the live web player so hash
+  rotations are fixed for every installed app without a release.
+
 ## 0.4.0 (2026-10-08)
 
 - **Home is Spotify's own Home.** Daily Mixes, Made For You, Jump back in, Recently played,

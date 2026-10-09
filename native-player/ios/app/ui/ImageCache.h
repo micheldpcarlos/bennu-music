@@ -7,4 +7,5 @@
 // a late response for an older url is ignored.
 - (void)load:(NSString*)url into:(UIImageView*)view placeholder:(UIImage*)placeholder;
 - (void)load:(NSString*)url completion:(void (^)(UIImage* image))completion;
+- (void)clearDisk;   // removes cached artwork files and the memory cache
 @end

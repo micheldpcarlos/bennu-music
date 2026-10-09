@@ -32,16 +32,17 @@ loop.
 
 ## Install
 
-1. On the jailbroken device, download the latest `.deb` from the
-   [Releases page](https://github.com/micheldpcarlos/bennu-music/releases/latest), or copy it
-   over.
-2. Install it with Filza (tap the file, then Install) or over SSH with
-   `dpkg -i app.bennu.music_*.deb`. The icon appears on the home screen.
-3. Open Bennu Music and sign in: scan the QR code with your phone, or play something in
-   Spotify on your phone and pick "Bennu Music" in the devices list.
+**With Cydia or Sileo (recommended):** add the source `https://micheldpcarlos.github.io/bennu-music/`
+and install Bennu Music. Updates then arrive like any other package.
 
-Updates are the same `.deb` again. To remove it: `dpkg -r app.bennu.music`, or Cydia's
-installed list.
+**With a file:** download the latest `.deb` from the
+[Releases page](https://github.com/micheldpcarlos/bennu-music/releases/latest) on the
+device, open it with Filza and tap Install, or run `dpkg -i app.bennu.music_*.deb` over SSH.
+
+Then open Bennu Music and sign in: scan the QR code with your phone, or play something in
+Spotify on your phone and pick "Bennu Music" in the devices list. The app checks GitHub for
+a newer release at launch and can download it from Settings. To remove it: `dpkg -r
+app.bennu.music`, or the package manager's installed list.
 
 ## Screenshots
 
@@ -53,12 +54,12 @@ installed list.
 |---|---|
 | ![Album](docs/screenshots/album-playing.png) | ![Library](docs/screenshots/library.png) |
 
-**Signing in.** Scan the QR code with your phone, or pick the device in Spotify's device list.
-The account screen shows who is signed in and controls visibility on the network.
+**Signing in and settings.** Scan the QR code with your phone, or pick the device in Spotify's device list.
+Settings covers audio quality, network visibility, cache, updates and diagnostics.
 
-| Welcome | Account |
+| Welcome | Settings |
 |---|---|
-| ![Welcome](docs/screenshots/welcome.png) | ![Account](docs/screenshots/account.png) |
+| ![Welcome](docs/screenshots/welcome.png) | ![Settings](docs/screenshots/settings.png) |
 
 **Visualizations.** The Windows Media Player 9 catalog, reimplemented for a 2011 CPU.
 
@@ -81,7 +82,7 @@ The account screen shows who is signed in and controls visibility on the network
 - **Now Playing**: artwork, scrubber with seek, shuffle, repeat (off / all / one), queue screen, lock-screen and Control Center controls.
 - **Visualizations**: all Windows Media Player 9 built-ins (Alchemy, Ambience, Bars and Waves, Battery, Particle, Plenoptic, Spikes) plus a Shuffle-all mode.
 - **Spotify Connect volume** is the device's system volume: the phone's slider moves it, the hardware buttons update the phone, and the level is remembered across restarts.
-- **Account**: profile photo and name, in-app sign-out, a switch for visibility on the local network.
+- **Account and Settings**: profile photo and name, in-app sign-out, network visibility, audio quality, cache clearing, update check and download, diagnostics export.
 - **Resilience**: automatic reconnect after network loss, engine restart with backoff, per-feature circuit breakers for Spotify's internal endpoints.
 
 ## How it works
@@ -102,6 +103,8 @@ native-player/
 scripts/build.sh           Build and sign the bundle
 scripts/install.sh         Install a development build over SSH
 scripts/package.sh         Produce the .deb and a zip of the bundle
+scripts/repo.sh            Publish the Cydia/Sileo repository to GitHub Pages
+scripts/scrape-hashes.py   Refresh config/pathfinder.json (run daily by a GitHub Action)
 docs/                      Research notes and project history
 ```
 
@@ -167,6 +170,7 @@ pip install -r native-player/ios/requirements-build.txt protobuf grpcio-tools
 scripts/build.sh                                  # native-player/ios/build/BennuMusic.app
 IPAD=root@<device address> scripts/install.sh     # staged install over SSH, keeps .previous for rollback
 scripts/package.sh                                # dist/*.deb and a zip of the bundle
+scripts/repo.sh                                   # publish dist/*.deb to the Cydia repo on gh-pages
 ```
 
 The bundle has one executable named after its hash, signed with `ldid` and a private
@@ -185,7 +189,8 @@ The app registers the `bennu://` URL scheme so it can be driven over SSH with `u
 | `bennu://nowplaying`, `bennu://seek?ms=266000`, `bennu://volume?v=32768`, `bennu://repeat?mode=1`, `bennu://enqueue?uri=...` | Player |
 | `bennu://viz?family=Battery%26preset=brightsphere`, `bennu://vizmenu` | Visualizer |
 | `bennu://pathfinder`, `bennu://pathfinder?action=refresh`, `bennu://pathfinder?op=home%26vars=<json>` | Log the service's hash status, force a hash refresh, or run an operation raw (body saved to Documents) |
-| `bennu://setup`, `bennu://signout`, `bennu://visible?on=0`, `bennu://drop` | Account, visibility, simulated connection loss |
+| `bennu://setup`, `bennu://settings`, `bennu://signout`, `bennu://visible?on=0`, `bennu://drop` | Account, Settings, visibility, simulated connection loss |
+| `bennu://catalog?kind=update%26arg=0.1.0` | Run any catalog kind (update, download, clearcache, homefeed, library...) and log the result |
 
 Separate query parameters with `%26` when the URL goes through `ssh`; the device's shell
 splits on `&` and `;`. The engine's log is `Documents/cspot-app.log`. Dropping a

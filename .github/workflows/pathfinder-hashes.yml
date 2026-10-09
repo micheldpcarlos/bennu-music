@@ -1,0 +1,34 @@
+name: Refresh web player hashes
+
+# Spotify rotates the persisted-query hashes with web player releases. Installed apps fetch
+# config/pathfinder.json when a cached hash stops working, so keeping this file current fixes
+# every device without a release. The device-side scrape is the fallback if this lags.
+on:
+  schedule:
+    - cron: "17 6 * * *"   # daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Scrape the web player
+        id: scrape
+        run: |
+          result=$(python3 scripts/scrape-hashes.py | tail -n 1)
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+      - name: Commit when changed
+        if: steps.scrape.outputs.result == 'changed'
+        run: |
+          git config user.name "bennu-music-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add config/pathfinder.json
+          git commit -m "config: refresh web player hashes ($(date -u +%Y-%m-%d))"
+          git push

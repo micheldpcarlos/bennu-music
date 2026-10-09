@@ -345,6 +345,9 @@ int main(int argc, char** argv) {
       ipad_player::setCatalogService([catalog](const std::string& kind, const std::string& argument, const ipad_player::CatalogPublish& publish) {
         if (kind == "search") catalog->search(argument, publish);
         else if (kind == "homefeed") catalog->homeFeed(publish);
+        else if (kind == "update") catalog->updateCheck(argument, publish);
+        else if (kind == "download") catalog->downloadUpdate(argument, publish);
+        else if (kind == "clearcache") catalog->clearCache(publish);
         else if (kind == "library") catalog->library(publish);
         else if (kind == "pathfinder") {
           // "" -> status, "refresh" -> force a hash refresh, "op:<name>:<variables json>" -> raw response (development)

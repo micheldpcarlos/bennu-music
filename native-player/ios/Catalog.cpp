@@ -8,6 +8,8 @@
 #include <atomic>
 #include <cstdio>
 #include <fstream>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <set>
 #include <thread>
 #include <sys/stat.h>
@@ -770,4 +772,54 @@ void Catalog::profile(const Publish& publish) {
   publish(JSON{{"name", str(document, "name", 128)}, {"image", imageURL(str(document, "image_url", 2048))}, {"playlists", playlists}, {"loading", false}}.dump(), true);
 }
 std::string canonicalImageURL(const std::string& idOrUrl) { return imageURL(idOrUrl); }
+static std::vector<int> versionParts(const std::string& text) {
+  std::vector<int> parts; std::string digits;
+  for (char c : text + ".") { if (isdigit((unsigned char)c)) digits += c; else if (!digits.empty()) { parts.push_back(std::atoi(digits.c_str())); digits.clear(); } }
+  while (parts.size() < 3) parts.push_back(0);
+  return parts;
+}
+void Catalog::updateCheck(const std::string& currentVersion, const Publish& publish) {
+  auto response = SpclientClient::fetch("GET", "https://api.github.com/repos/micheldpcarlos/bennu-music/releases/latest",
+      {{"User-Agent", "BennuMusic/" + currentVersion}, {"Accept", "application/vnd.github+json"}}, "", 512 * 1024, 20);
+  if (response.status != 200) throw std::runtime_error("GitHub answered HTTP " + std::to_string(response.status));
+  auto release = JSON::parse(response.body);
+  std::string tag = str(release, "tag_name", 64); if (!tag.empty() && tag[0] == 'v') tag.erase(0, 1);
+  std::string debUrl, debName;
+  if (release.count("assets") && release["assets"].is_array())
+    for (const auto& asset : release["assets"]) {
+      auto name = str(asset, "name", 128);
+      if (name.size() > 4 && name.compare(name.size() - 4, 4, ".deb") == 0) { debUrl = str(asset, "browser_download_url", 512); debName = name; break; }
+    }
+  bool newer = versionParts(tag) > versionParts(currentVersion);
+  JSON out{{"latest", tag}, {"current", currentVersion}, {"newer", newer}, {"debUrl", debUrl}, {"debName", debName}, {"page", str(release, "html_url", 256)},
+      {"notes", str(release, "body", 600)}, {"loading", false}};
+  std::fprintf(stderr, "UPDATE: latest=%s current=%s newer=%d\n", tag.c_str(), currentVersion.c_str(), newer ? 1 : 0);
+  publish(out.dump(), true);
+}
+void Catalog::downloadUpdate(const std::string& url, const Publish& publish) {
+  static const std::string kReleases = "https://github.com/micheldpcarlos/bennu-music/";
+  if (url.compare(0, kReleases.size(), kReleases) != 0 && url.find("githubusercontent.com") == std::string::npos) throw std::runtime_error("unexpected download host");
+  auto response = SpclientClient::fetch("GET", url, {{"User-Agent", "BennuMusic"}, {"Accept", "application/octet-stream"}}, "", 24 * 1024 * 1024, 180);
+  if (response.status != 200 || response.body.size() < 1024) throw std::runtime_error("download answered HTTP " + std::to_string(response.status));
+  auto slash = url.rfind('/'); std::string name = slash == std::string::npos ? "update.deb" : url.substr(slash + 1);
+  if (name.find("..") != std::string::npos || name.find('/') != std::string::npos) name = "update.deb";
+  std::string dir = "/var/mobile/Downloads"; mkdir(dir.c_str(), 0755);
+  std::string path = dir + "/" + name;
+  { std::ofstream file(path, std::ios::binary | std::ios::trunc); file.write(response.body.data(), (std::streamsize)response.body.size()); if (!file) throw std::runtime_error("could not write " + path); }
+  std::fprintf(stderr, "UPDATE: saved %s (%lu bytes)\n", path.c_str(), (unsigned long)response.body.size());
+  publish(JSON{{"path", path}, {"bytes", response.body.size()}, {"loading", false}}.dump(), true);
+}
+void Catalog::clearCache(const Publish& publish) {
+  { std::lock_guard<std::mutex> lock(cacheMutex); memoryCache.clear(); coverCache.clear(); artistCache.clear(); }
+  int removed = 0;
+  for (const std::string& sub : {"/tracks", ""}) {
+    std::string dir = cacheDir + sub;
+    if (DIR* d = opendir(dir.c_str())) {
+      while (dirent* e = readdir(d)) { std::string name = e->d_name; if (name == "." || name == "..") continue; if (name.size() > 5 && name.compare(name.size() - 5, 5, ".json") == 0) { if (!std::remove((dir + "/" + name).c_str())) ++removed; } }
+      closedir(d);
+    }
+  }
+  std::fprintf(stderr, "CACHE: cleared %d files\n", removed);
+  publish(JSON{{"removed", removed}, {"loading", false}}.dump(), true);
+}
 }  // namespace ipad_player

@@ -14,7 +14,7 @@ namespace ipad_player {
 // instance; create several instances for parallelism.
 class SpclientClient {
  public:
-  struct Response { int status = 0; std::string body; };
+  struct Response { int status = 0; std::string body; std::string location; };
   explicit SpclientClient(std::shared_ptr<cspot::Context> context);
   ~SpclientClient();
   // path starts with '/'. Sends the session bearer token. Throws on transport failure.
@@ -27,6 +27,7 @@ class SpclientClient {
  private:
   Response request(const std::string& method, const std::string& path, const std::string& accept, const std::string& token, const std::string& body, const std::string& contentType);
   static Response readResponse(bell::SocketStream& stream, size_t limit, bool& close);
+  static Response fetchOnce(const std::string& method, const std::string& url, const std::vector<std::pair<std::string, std::string>>& headers, const std::string& body, size_t limit, int timeoutSeconds);
   void connect();
   void disconnect();
   std::shared_ptr<cspot::AccessKeyFetcher> tokenFetcher;

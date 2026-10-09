@@ -127,4 +127,9 @@ static UIImage* decodedImage(UIImage* image) {
     }] resume];
   });
 }
+- (void)clearDisk {
+  [self.memory removeAllObjects];
+  [NSFileManager.defaultManager removeItemAtPath:self.directory error:nil];
+  [NSFileManager.defaultManager createDirectoryAtPath:self.directory withIntermediateDirectories:YES attributes:nil error:nil];
+}
 @end

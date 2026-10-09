@@ -6,6 +6,7 @@
 #import "PlayerModel.h"
 #import "ImageCache.h"
 #import "SetupViewController.h"
+#import "SettingsViewController.h"
 enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
 @interface HomeViewController () <UITableViewDataSource, UITableViewDelegate>
 @property(nonatomic, strong) NSArray* recent;
@@ -14,6 +15,8 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
 @property(nonatomic, strong) NSArray* releases;
 @property(nonatomic, strong) CatalogRequest* homeRequest;
 @property(nonatomic, strong) CatalogRequest* feedRequest;
+@property(nonatomic, strong) CatalogRequest* updateRequest;
+@property(nonatomic) BOOL checkedUpdate;
 @property(nonatomic, strong) NSArray* feed;   // Spotify's own Home sections [{title, items}] when the web player service answers
 @property(nonatomic, strong) CatalogRequest* recentRequest;
 @property(nonatomic, strong) CatalogRequest* profileRequest;
@@ -99,6 +102,14 @@ enum { HomeRecent = 0, HomePlaylists, HomeRadios, HomeReleases, HomeCount };
       owner.greeting.text = [NSString stringWithFormat:@"%@, %@", owner.greeting.text, [name componentsSeparatedByString:@" "].firstObject];
     }
   }];
+  if (!self.checkedUpdate) {
+    self.checkedUpdate = YES;
+    self.updateRequest = [[CatalogClient shared] request:@"update" argument:[SettingsViewController appVersion] update:^(NSDictionary* json, BOOL done) {
+      HomeViewController* owner = weakSelf; if (!owner || !done || json[@"error"] || ![json[@"newer"] boolValue]) return;
+      owner.status.text = [NSString stringWithFormat:@"Bennu Music %@ is available. Account › Settings › Updates.", json[@"latest"]];
+      owner.status.textColor = [BennuTheme green];
+    }];
+  }
   self.feedRequest = [[CatalogClient shared] request:@"homefeed" argument:@"" update:^(NSDictionary* json, BOOL done) {
     HomeViewController* owner = weakSelf; if (!owner) return;
     if (json[@"error"] || ![json[@"sections"] isKindOfClass:NSArray.class] || [json[@"sections"] count] == 0) return;   // keep the derived shelves
