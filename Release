@@ -1,0 +1,9 @@
+Origin: Bennu Music
+Label: Bennu Music
+Suite: stable
+Version: 1.0
+Codename: ios
+Architectures: iphoneos-arm
+Components: main
+Description: Native Spotify player for jailbroken 32-bit iOS 9 devices
+Date: Fri, 09 Oct 2026 00:21:12 UTC
