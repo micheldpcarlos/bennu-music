@@ -97,3 +97,23 @@ Size: 2383080
 MD5sum: 693699a00e18e5d272d9d95320ee74b8
 SHA1: 70f8b710d65c2d5e24033d6b05120b80ba59f4c5
 SHA256: c3323df91e3fb85150f3768e1e685a01e8c4c7febaf0105d336fbbbc5a9e65fb
+
+Package: app.bennu.music
+Name: Bennu Music
+Version: 0.5.0
+Architecture: iphoneos-arm
+Section: Multimedia
+Priority: optional
+Depends: firmware (>= 9.0), firmware (<< 11.0)
+Installed-Size: 4461
+Maintainer: Michel Carlos
+Author: Michel Carlos
+Homepage: https://github.com/micheldpcarlos/bennu-music
+Description: Native Spotify player for jailbroken 32-bit iOS 9 devices.
+ Spotify Connect receiver and standalone player with Home, Search, Library,
+ queue, lock-screen controls and visualizations. Spotify Premium required.
+Filename: debs/app.bennu.music_0.5.0_iphoneos-arm.deb
+Size: 2405380
+MD5sum: 90f6c54a156b2bc60fdf62c6f768009d
+SHA1: 9036b9d6f3f168be7b412f7d75506d5bbf8d0305
+SHA256: 198d5f89311e201de088e16a7c21991291b8c11d4650cb8a8e5efbd2f8da3b27
