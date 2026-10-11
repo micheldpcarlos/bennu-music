@@ -181,6 +181,16 @@ std::vector<uint8_t> PlaybackState::encodeCurrentFrame(MessageType typ) {
   return pbEncode(Frame_fields, &innerFrame);
 }
 
+void PlaybackState::setShuffle(bool on) { std::lock_guard<std::recursive_mutex> lock(frameMutex); innerFrame.state.shuffle = on; innerFrame.state.has_shuffle = true; }
+void PlaybackState::setRepeat(bool on) { std::lock_guard<std::recursive_mutex> lock(frameMutex); innerFrame.state.repeat = on; innerFrame.state.has_repeat = true; }
+bool PlaybackState::remoteShuffle() { std::lock_guard<std::recursive_mutex> lock(frameMutex); return remoteFrame.state.has_shuffle && remoteFrame.state.shuffle; }
+bool PlaybackState::remoteRepeat() { std::lock_guard<std::recursive_mutex> lock(frameMutex); return remoteFrame.state.has_repeat && remoteFrame.state.repeat; }
+void PlaybackState::setOutgoingTracks(std::vector<TrackReference>* tracks) {
+  std::lock_guard<std::recursive_mutex> lock(frameMutex);
+  innerFrame.state.track.funcs.encode = tracks ? &TrackReference::pbEncodeTrackList : nullptr;
+  innerFrame.state.track.arg = tracks;
+}
+
 // Wraps messy nanopb setters. @TODO: find a better way to handle this
 void PlaybackState::addCapability(CapabilityType typ, int intValue,
                                   std::vector<std::string> stringValue) {

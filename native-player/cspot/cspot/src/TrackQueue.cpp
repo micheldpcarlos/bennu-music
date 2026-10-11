@@ -1,3 +1,4 @@
+#include <random>
 #include "CSpotCompat.h"
 #include "TrackQueue.h"
 #include <pb_decode.h>
@@ -579,6 +580,7 @@ bool TrackQueue::skipTrack(SkipDirection dir, bool expectNotify) {
   if (skipped) {
     // Update frame data
     playbackState->setTrackIndex(currentTracksIndex);
+    ++revision;
 
     if (expectNotify) {
       // Reset position to zero
@@ -593,7 +595,71 @@ std::vector<uint8_t> TrackQueue::encodeCurrentFrame(MessageType type) {
   // Lock order is always tracksMutex -> PlaybackState's frameMutex.
   // Keep the callback vector alive and unchanged through all nanopb passes.
   std::lock_guard<decltype(tracksMutex)> lock(tracksMutex);
-  return playbackState->encodeCurrentFrame(type);
+  // Publish the real queue: without it the phone keeps its own copy of the list and
+  // shows a different "next up" whenever the order here changed (shuffle, play next).
+  playbackState->setOutgoingTracks(currentTracks.empty() ? nullptr : &currentTracks);
+  auto encoded = playbackState->encodeCurrentFrame(type);
+  playbackState->setOutgoingTracks(nullptr);
+  return encoded;
+}
+
+std::vector<std::string> TrackQueue::trackUris(int& index) {
+  std::lock_guard<decltype(tracksMutex)> lock(tracksMutex);
+  std::vector<std::string> uris; uris.reserve(currentTracks.size());
+  static const char* hexDigits = "0123456789abcdef";
+  for (auto& t : currentTracks) {
+    if (!t.uri.empty()) { uris.push_back(t.uri); continue; }
+    std::string hex = "hex:";   // phone lists carry only the 16-byte gid
+    for (uint8_t b : t.gid) { hex += hexDigits[b >> 4]; hex += hexDigits[b & 15]; }
+    uris.push_back(hex);
+  }
+  index = currentTracksIndex;
+  return uris;
+}
+
+void TrackQueue::resetShuffle(bool phoneShuffled) {
+  std::lock_guard<decltype(tracksMutex)> lock(tracksMutex);
+  unshuffledTracks.clear();
+  shuffle = phoneShuffled;
+  playbackState->setShuffle(phoneShuffled);
+}
+
+void TrackQueue::setShuffle(bool on) {
+  std::lock_guard<decltype(tracksMutex)> lock(tracksMutex);
+  playbackState->setShuffle(on);
+  if (on == shuffle.load()) return;
+  shuffle = on;
+  if (currentTracks.size() < 2 || currentTracksIndex < 0 || currentTracksIndex >= (int)currentTracks.size()) return;
+  TrackReference playing = currentTracks[currentTracksIndex];
+  if (on) {
+    unshuffledTracks = currentTracks;
+    // Playing track first, then anything queued with "play next", then the rest shuffled.
+    std::vector<TrackReference> queued, rest;
+    for (size_t i = 0; i < currentTracks.size(); ++i) {
+      if ((int)i == currentTracksIndex) continue;
+      bool isQueued = currentTracks[i].queued && *currentTracks[i].queued;   // optional<bool>: present is not the same as true
+      if ((int)i > currentTracksIndex && isQueued && rest.empty()) queued.push_back(currentTracks[i]);
+      else rest.push_back(currentTracks[i]);
+    }
+    std::shuffle(rest.begin(), rest.end(), std::mt19937(std::random_device{}()));
+    currentTracks.clear();
+    currentTracks.push_back(playing);
+    currentTracks.insert(currentTracks.end(), queued.begin(), queued.end());
+    currentTracks.insert(currentTracks.end(), rest.begin(), rest.end());
+    currentTracksIndex = 0;
+  } else if (!unshuffledTracks.empty()) {
+    currentTracks = unshuffledTracks;
+    unshuffledTracks.clear();
+    currentTracksIndex = 0;
+    for (size_t i = 0; i < currentTracks.size(); ++i)
+      if (currentTracks[i].gid == playing.gid) { currentTracksIndex = (int16_t)i; break; }
+  }
+  playbackState->remoteTracks = currentTracks;
+  playbackState->setTrackIndex(currentTracksIndex);
+  ++revision;
+  // Re-plan what comes next: keep the playing track, drop the rest of the preload.
+  if (preloadedTracks.size() > 1) preloadedTracks.erase(preloadedTracks.begin() + 1, preloadedTracks.end());
+  if (!preloadedTracks.empty()) queueNextTrack(1);
 }
 
 bool TrackQueue::hasTracks() {
@@ -623,6 +689,7 @@ void TrackQueue::insertAfterCurrent(const std::vector<TrackReference>& tracks) {
   if (at > currentTracks.size()) at = currentTracks.size();
   currentTracks.insert(currentTracks.begin() + at, tracks.begin(), tracks.end());
   playbackState->remoteTracks = currentTracks;
+  ++revision;
   if (preloadedTracks.size() > 1) preloadedTracks.erase(preloadedTracks.begin() + 1, preloadedTracks.end());
   if (!preloadedTracks.empty()) queueNextTrack(1);
 }
@@ -634,6 +701,7 @@ bool TrackQueue::updateTracks(uint32_t requestedPosition, bool initial) {
   // Copy requested track list
   currentTracks = playbackState->remoteTracks;
   currentTracksIndex = playbackState->trackIndex();
+  ++revision;
 
   if (initial) {
     // Clear preloaded tracks

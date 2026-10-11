@@ -60,6 +60,8 @@ void SpircHandler::subscribeToMercury() {
 
     sendCmd(MessageType_kMessageTypeHello);
     CSPOT_LOG(debug, "Sent kMessageTypeHello!");
+    // After a reconnect the phone sees a fresh device; tell it what is playing.
+    if (this->playbackState->isActive()) this->notify();
 
     // Assign country code
     this->ctx->config.countryCode = this->ctx->session->getCountryCode();
@@ -132,8 +134,19 @@ void SpircHandler::queueTracks(const std::vector<std::string>& uris) {
 
 void SpircHandler::setRepeat(int mode) {
   trackQueue->setRepeatMode(mode);
+  playbackState->setRepeat(mode != 0);   // Connect only knows on/off; repeat-one shows as on
   notify();
 }
+
+void SpircHandler::setShuffle(bool on) {
+  trackQueue->setShuffle(on);
+  notify();
+}
+
+bool SpircHandler::shuffled() { return trackQueue->shuffled(); }
+uint64_t SpircHandler::queueRevision() { return trackQueue->queueRevision(); }
+std::vector<std::string> SpircHandler::trackUris(int& index) { return trackQueue->trackUris(index); }
+int SpircHandler::repeatMode() { return trackQueue->repeatMode(); }
 
 void SpircHandler::seekTo(uint32_t positionMs) {
   // Same steps as a remote Seek frame, on the engine dispatch thread.
@@ -257,6 +270,9 @@ void SpircHandler::handleFrame(std::vector<uint8_t>& data) {
       // Update track list in case we have a new one
       trackQueue->updateTracks(playbackState->remoteFrame.state.position_ms,
                                true);
+      // The phone sends its list already in the order it wants; keep its flags.
+      trackQueue->resetShuffle(playbackState->remoteShuffle());
+      playbackState->setRepeat(playbackState->remoteRepeat() || trackQueue->repeatMode() != 0);
 
       this->notify();
 
@@ -286,12 +302,17 @@ void SpircHandler::handleFrame(std::vector<uint8_t>& data) {
       break;
     }
     case MessageType_kMessageTypeShuffle: {
-      CSPOT_LOG(debug, "Got shuffle frame");
+      bool on = playbackState->remoteShuffle();
+      CSPOT_LOG(info, "Shuffle %s from controller", on ? "on" : "off");
+      trackQueue->setShuffle(on);
       this->notify();
       break;
     }
     case MessageType_kMessageTypeRepeat: {
-      CSPOT_LOG(debug, "Got repeat frame");
+      bool on = playbackState->remoteRepeat();
+      CSPOT_LOG(info, "Repeat %s from controller", on ? "on" : "off");
+      trackQueue->setRepeatMode(on ? 1 : 0);
+      playbackState->setRepeat(on);
       this->notify();
       break;
     }

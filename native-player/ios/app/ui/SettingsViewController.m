@@ -120,7 +120,9 @@ enum { SectionQuality = 0, SectionNetwork, SectionStorage, SectionUpdates, Secti
     stripped = [[NSRegularExpression regularExpressionWithPattern:@"BQ[A-Za-z0-9_-]{20,}" options:0 error:nil] stringByReplacingMatchesInString:stripped options:0 range:NSMakeRange(0, stripped.length) withTemplate:@"<token>"];
     [clean appendString:stripped]; [clean appendString:@"\n"];
   }
-  NSString* header = [NSString stringWithFormat:@"Bennu Music %@ on %@ %@\n%@\n\n", [SettingsViewController appVersion], UIDevice.currentDevice.model, UIDevice.currentDevice.systemVersion, [NSDate date]];
+  NSString* crashes = [NSString stringWithContentsOfFile:[documents stringByAppendingPathComponent:@"bennu-crash.log"] encoding:NSUTF8StringEncoding error:nil] ?: @"";
+  if (crashes.length > 20000) crashes = [crashes substringFromIndex:crashes.length - 20000];
+  NSString* header = [NSString stringWithFormat:@"Bennu Music %@ on %@ %@\n%@\n\n--- crashes ---\n%@\n--- log ---\n", [SettingsViewController appVersion], UIDevice.currentDevice.model, UIDevice.currentDevice.systemVersion, [NSDate date], crashes.length ? crashes : @"(none)\n"];
   NSString* path = [documents stringByAppendingPathComponent:@"bennu-diagnostics.txt"];
   [[header stringByAppendingString:clean] writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
   UIActivityViewController* share = [[UIActivityViewController alloc] initWithActivityItems:@[[NSURL fileURLWithPath:path]] applicationActivities:nil];

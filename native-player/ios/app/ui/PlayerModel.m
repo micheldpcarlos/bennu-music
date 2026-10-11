@@ -10,8 +10,8 @@ NSString* const BennuTrackChanged = @"BennuTrackChanged";
 @property(nonatomic) IPadPlayerSnapshot snapshot;
 @property(nonatomic, copy) NSString* contextName;
 @property(nonatomic, copy) NSString* contextUri;
-@property(nonatomic) BOOL shuffle;
 @property(nonatomic, strong) NSTimer* timer;
+@property(nonatomic) NSInteger pendingShuffle;   // -1: keep the engine's current shuffle for the next play
 @property(nonatomic, strong) MPVolumeView* volumeView;   // off-screen; its slider is the only public way to set the system volume
 @property(nonatomic) float appliedVolume;
 @property(nonatomic, strong) CatalogRequest* contextRequest;
@@ -49,6 +49,7 @@ NSString* const BennuTrackChanged = @"BennuTrackChanged";
   self.appliedVolume = AVAudioSession.sharedInstance.outputVolume;
   ipad_player_report_volume((uint32_t)lroundf(self.appliedVolume * 65535));
   [AVAudioSession.sharedInstance addObserver:self forKeyPath:@"outputVolume" options:NSKeyValueObservingOptionNew context:NULL];
+  self.pendingShuffle = -1;
   self.timer = [NSTimer scheduledTimerWithTimeInterval:0.5 target:self selector:@selector(refresh) userInfo:nil repeats:YES];
   [self refresh];
 }
@@ -61,7 +62,7 @@ NSString* const BennuTrackChanged = @"BennuTrackChanged";
   [self updateNowPlayingInfo];
   [NSNotificationCenter.defaultCenter postNotificationName:BennuMusicChanged object:self];
   if (strcmp(previous.trackId, snapshot.trackId) != 0 || previous.paused != snapshot.paused || previous.state != snapshot.state ||
-      previous.hasTrack != snapshot.hasTrack || previous.reconnecting != snapshot.reconnecting || previous.repeat != snapshot.repeat)
+      previous.hasTrack != snapshot.hasTrack || previous.reconnecting != snapshot.reconnecting || previous.repeat != snapshot.repeat || previous.shuffle != snapshot.shuffle)
     [NSNotificationCenter.defaultCenter postNotificationName:BennuTrackChanged object:self];
 }
 - (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
@@ -126,10 +127,13 @@ NSString* const BennuTrackChanged = @"BennuTrackChanged";
 - (void)next { ipad_player_command(IPadNext); [self refresh]; }
 - (void)previous { ipad_player_command(IPadPrevious); [self refresh]; }
 - (void)seekTo:(uint32_t)milliseconds { ipad_player_seek(milliseconds); [self refresh]; }
-- (void)toggleShuffle { self.shuffle = !self.shuffle; [self refresh]; }
+- (BOOL)shuffle { return self.snapshot.shuffle != 0; }
+- (void)toggleShuffle { ipad_player_set_shuffle(self.shuffle ? 0 : 1); [self refresh]; }
 - (BOOL)playURIs:(NSArray*)uris index:(NSUInteger)index contextUri:(NSString*)uri contextName:(NSString*)name {
   if (uris.count == 0) return NO;
-  NSDictionary* command = @{@"uris": uris, @"index": @(index), @"context": uri ?: @"", @"shuffle": @(self.shuffle)};
+  BOOL shuffle = self.pendingShuffle >= 0 ? self.pendingShuffle == 1 : self.shuffle;
+  self.pendingShuffle = -1;
+  NSDictionary* command = @{@"uris": uris, @"index": @(index), @"context": uri ?: @"", @"shuffle": @(shuffle)};
   NSData* data = [NSJSONSerialization dataWithJSONObject:command options:0 error:nil];
   NSString* json = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
   if (!ipad_player_play_tracks(json.UTF8String)) return NO;
@@ -138,7 +142,7 @@ NSString* const BennuTrackChanged = @"BennuTrackChanged";
   return YES;
 }
 - (void)playContext:(NSString*)uri name:(NSString*)name shuffle:(BOOL)shuffle {
-  self.shuffle = shuffle;
+  self.pendingShuffle = shuffle ? 1 : 0;
   __weak PlayerModel* weakSelf = self;
   self.contextRequest = [[CatalogClient shared] request:@"context" argument:uri update:^(NSDictionary* json, BOOL done) {
     NSArray* uris = json[@"uris"];

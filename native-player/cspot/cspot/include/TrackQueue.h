@@ -106,6 +106,14 @@ class TrackQueue : public bell::Task {
   bool isFinished();
   // 0 = off, 1 = repeat all, 2 = repeat one. Affects which track is preloaded next.
   void setRepeatMode(int mode);
+  // Reorders what comes after the playing track; off restores the original order.
+  void setShuffle(bool on);
+  bool shuffled() const { return shuffle; }
+  // Order actually played, for the UI's queue screen; revision changes whenever it does.
+  uint64_t queueRevision() const { return revision; }
+  std::vector<std::string> trackUris(int& index);
+  // A new list from the phone: forget the order kept for un-shuffling.
+  void resetShuffle(bool phoneShuffled);
   int repeatMode() const { return repeat; }
   // Inserts tracks right after the current one without interrupting playback.
   void insertAfterCurrent(const std::vector<TrackReference>& tracks);
@@ -135,6 +143,9 @@ class TrackQueue : public bell::Task {
 
   int16_t currentTracksIndex = -1;
   std::atomic<int> repeat{0};
+  std::atomic<bool> shuffle{false};
+  std::atomic<uint64_t> revision{1};
+  std::vector<TrackReference> unshuffledTracks;   // order before shuffle was turned on
 
   bool isRunning = false;
 

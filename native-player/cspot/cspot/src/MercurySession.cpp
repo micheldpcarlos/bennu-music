@@ -46,10 +46,11 @@ void MercurySession::runTask() {
         timeProvider->syncWithPingPacket(packet.data);
 
         this->lastPingTimestamp = timeProvider->getSyncedTimestamp();
-        this->shanConn->sendPacket(0x49, packet.data);
+        this->pongDueAtMs = static_cast<long long>(timeProvider->getSyncedTimestamp()) + 60000;
       } else {
         this->packetQueue.push(packet);
       }
+      sendPendingPong();
     } catch (const std::runtime_error& e) {
       CSPOT_LOG(error, "Error while receiving packet: %s", e.what());
       failAllPending();
@@ -78,6 +79,7 @@ void MercurySession::reconnect() {
     BELL_SLEEP_MS(100);
 
     lastPingTimestamp = timeProvider->getSyncedTimestamp();
+    pongDueAtMs = 0;
     isReconnecting = false;
 
     this->executeEstabilishedCallback = true;
@@ -96,9 +98,18 @@ void MercurySession::setConnectedHandler(
   this->connectionReadyCallback = callback;
 }
 
+void MercurySession::sendPendingPong() {
+  long long due = pongDueAtMs.load();
+  if (due == 0 || static_cast<long long>(timeProvider->getSyncedTimestamp()) < due) return;
+  pongDueAtMs = 0;
+  std::vector<uint8_t> zeros(4, 0);
+  try { if (shanConn) shanConn->sendPacket(0x49, zeros); } catch (...) {}
+}
+
 bool MercurySession::triggerTimeout() {
   if (!isRunning)
     return true;
+  sendPendingPong();   // called every ~3 s while the socket is idle
   auto currentTimestamp = timeProvider->getSyncedTimestamp();
 
   if (currentTimestamp - this->lastPingTimestamp > PING_TIMEOUT_MS) {

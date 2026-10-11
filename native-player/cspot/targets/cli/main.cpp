@@ -393,6 +393,7 @@ int main(int argc, char** argv) {
       ipad_player::setQueueHandlers(
           [weakHandler](const std::vector<std::string>& uris) { if (auto active = weakHandler.lock()) active->queueTracks(uris); },
           [weakHandler](int mode) { if (auto active = weakHandler.lock()) active->setRepeat(mode); });
+      ipad_player::setShuffleHandler([weakHandler](bool on) { if (auto active = weakHandler.lock()) active->setShuffle(on); });
       ipad_player::setVolumeHandler([weakHandler](uint32_t volume) { if (auto active = weakHandler.lock()) active->setRemoteVolume((int)volume); });
       {
         auto* zeroconf = zeroconfServer.get();
@@ -414,10 +415,19 @@ int main(int argc, char** argv) {
 
       // If we wanted to handle multiple devices, we would halt this loop
       // when a new zeroconf login is requested, and reinitialize the session
+#ifdef CSPOT_IOS_APP
+      uint64_t publishedQueueRevision = 0;
+#endif
       while (isRunning) {
 #ifdef CSPOT_IOS_APP
         ipad_player::dispatchPending();
         ipad_player_reconnecting(ctx->session->reconnecting() ? 1 : 0);
+        ipad_player_engine_flags(handler->shuffled() ? 1 : 0, handler->repeatMode());
+        if (handler->queueRevision() != publishedQueueRevision) {
+          publishedQueueRevision = handler->queueRevision();
+          int index = 0; auto uris = handler->trackUris(index);
+          ipad_player::publishQueue(uris, index);
+        }
         try { ctx->session->handlePacket(); }
         catch (...) { if (ipad_player::stopRequested()) break; throw; }
 #else

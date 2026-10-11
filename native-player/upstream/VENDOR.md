@@ -26,3 +26,5 @@ bell's own external submodules, unmodified:
 
 
 Pruned on 2026-10-08 to keep the repository small: bell externals the iOS build does not use (opus, opencore-aacdec, alac, portaudio, mqtt, fmt's sources and docs), test suites, examples and documentation of nanopb, cJSON, tremor, nlohmann_json and the compat headers, the esp32 target, and Mbed TLS's test framework data, docs and programs. Restore from upstream at the pinned commits if ever needed.
+
+Keep-alive change (2026-10-11): cspot answered each access-point Ping with an immediate Pong echoing the ping data; the server dropped about one session an hour. MercurySession now sends a 4-byte zero Pong 60 s after the Ping, as librespot does since PR #1359 (2024-10). Also changed in the vendored engine: PlaybackState publishes the track list and shuffle/repeat flags, TrackQueue implements shuffle with a restorable order, TrackPlayer/CDNAudioFile retry network failures instead of throwing through libvorbis.

@@ -178,8 +178,26 @@ void TrackPlayer::runTask() {
 
       currentTrackStream = track->getAudioFile();
 
-      // Open the stream
-      currentTrackStream->openStream();
+      // Open the stream. A network failure here used to abort the whole app (uncaught
+      // exception on this thread); retry a few times, then skip the track.
+      bool opened = false;
+      for (int attempt = 0; attempt < 3 && !opened && !pendingReset; ++attempt) {
+        try {
+          if (attempt > 0) BELL_SLEEP_MS(1500 * attempt);
+          currentTrackStream->openStream();
+          opened = true;
+        } catch (const std::exception& e) {
+          CSPOT_LOG(error, "Opening the audio stream failed (%s), attempt %d", e.what(), attempt + 1);
+        } catch (...) {
+          CSPOT_LOG(error, "Opening the audio stream failed, attempt %d", attempt + 1);
+        }
+      }
+      if (!opened) {
+        currentTrackStream = nullptr;
+        currentSongPlaying = false;
+        if (!pendingReset) { CSPOT_LOG(error, "Skipping track after repeated stream failures"); this->eofCallback(); }
+        continue;
+      }
 
       if (pendingReset || !currentSongPlaying) {
         continue;

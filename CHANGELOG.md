@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.1 (2026-10-11)
+
+- **Fixes crashes during track changes.** When the connection to Spotify's audio servers
+  dropped while opening or reading a song, an unhandled network error aborted the app. Stream
+  opens now retry and then skip the track; reads retry on a fresh connection.
+- **Fixes playlist search.** Search fell back to songs only because a playlist owner name was
+  cut in the middle of a UTF-8 character.
+- **Stays in sync with your phone.** The player now publishes its real queue to Spotify, so the
+  phone's "next up" matches what plays; the shuffle and repeat toggles from the phone reorder
+  and replan the queue; turning shuffle off restores the original order. After a reconnect the
+  player re-announces what it is playing instead of appearing idle.
+- **Fewer disconnects.** The access point's keep-alive is answered like the official clients
+  (pong after 60 s, empty payload); the immediate echoed pong made the server drop the session
+  every few minutes to hours.
+- Shuffle in Now Playing now acts on what is playing and reflects the phone's setting; the
+  Queue screen shows the order actually played.
+
 ## 0.5.0 (2026-10-08)
 
 - **Settings** (Account › Settings): audio quality (96 / 160 / 320 kbps, restarts the player),

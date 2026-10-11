@@ -23,7 +23,7 @@ void report() {
   uint32_t previousEmpty = 0;
   long long previousTime = milliseconds();
   for (;;) {
-    std::this_thread::sleep_for(std::chrono::seconds(30));  // diagnostics only; 2 s filled the log
+    std::this_thread::sleep_for(std::chrono::seconds(300));  // diagnostics only; 2 s filled the log
     const long long now = milliseconds();
     const uint32_t d = decodedBytes.load(std::memory_order_relaxed);
     const uint32_t q = queuedBytes.load(std::memory_order_relaxed);

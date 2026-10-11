@@ -141,7 +141,9 @@ void PlainConnection::readBlock(const uint8_t* dst, size_t size) {
 
   while (idx < size) {
   READ:
-    if ((n = recv(this->apSock, (char*)&dst[idx], size - idx, 0)) <= 0) {
+    n = recv(this->apSock, (char*)&dst[idx], size - idx, 0);
+    if (n == 0) throw std::runtime_error("Connection closed by server");
+    if (n < 0) {
       switch (getErrno()) {
         case EAGAIN:
         case ETIMEDOUT:
@@ -151,7 +153,7 @@ void PlainConnection::readBlock(const uint8_t* dst, size_t size) {
           }
           goto READ;
         case EINTR:
-          break;
+          goto READ;
         default:
           if (retries++ > 4)
             throw std::runtime_error("Error in read");

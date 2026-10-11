@@ -90,9 +90,15 @@ static void startEngine() {
 }
 
 #include <execinfo.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <csignal>
 #include <mach-o/dyld.h>
+// Crashes also go to their own file: the main log is trimmed at launch and lost them.
+static int crashFd = -1;
 static void bennuUncaughtException(NSException* exception) {
+  if (crashFd >= 0) dprintf(crashFd, "%s CRASH: uncaught %s: %s slide=0x%lx\n", [[NSDate date] description].UTF8String, exception.name.UTF8String, exception.reason.UTF8String, (unsigned long)_dyld_get_image_vmaddr_slide(0));
+  if (crashFd >= 0) for (NSString* line in exception.callStackSymbols) dprintf(crashFd, "  %s\n", line.UTF8String);
   std::fprintf(stderr, "CRASH: uncaught %s: %s slide=0x%lx\n", exception.name.UTF8String, exception.reason.UTF8String, (unsigned long)_dyld_get_image_vmaddr_slide(0));
   for (NSString* line in exception.callStackSymbols) std::fprintf(stderr, "CRASH:   %s\n", line.UTF8String);
   std::fflush(stderr);
@@ -101,6 +107,7 @@ static void bennuFatalSignal(int sig) {
   std::fprintf(stderr, "CRASH: signal %d slide=0x%lx\n", sig, (unsigned long)_dyld_get_image_vmaddr_slide(0));
   void* frames[64]; int count = backtrace(frames, 64);
   backtrace_symbols_fd(frames, count, fileno(stderr));
+  if (crashFd >= 0) { char line[96]; int n = snprintf(line, sizeof line, "CRASH: signal %d at %ld slide=0x%lx\n", sig, (long)time(nullptr), (unsigned long)_dyld_get_image_vmaddr_slide(0)); write(crashFd, line, n); backtrace_symbols_fd(frames, count, crashFd); }
   std::fflush(stderr);
   std::signal(sig, SIG_DFL); raise(sig);
 }
@@ -140,6 +147,7 @@ static void bennuFatalSignal(int sig) {
   std::setvbuf(stderr, nullptr, _IOLBF, 0);
   std::fprintf(stderr, "APP: launched; log=%s\n", log.fileSystemRepresentation);
   // There is no crash reporter on these devices: write the reason and a backtrace to the log.
+  crashFd = open([log.stringByDeletingLastPathComponent stringByAppendingPathComponent:@"bennu-crash.log"].fileSystemRepresentation, O_WRONLY | O_CREAT | O_APPEND, 0644);
   NSSetUncaughtExceptionHandler(&bennuUncaughtException);
   for (int sig : {SIGSEGV, SIGBUS, SIGILL, SIGABRT, SIGFPE}) std::signal(sig, bennuFatalSignal);
 

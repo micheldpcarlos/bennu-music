@@ -136,6 +136,11 @@ BOOL BennuHandleURL(NSURL* url) {
     }];
   } else if ([action isEqualToString:@"seek"]) {
     ipad_player_seek((uint32_t)[query[@"ms"] longLongValue]);
+  } else if ([action isEqualToString:@"shuffle"]) {
+    fprintf(stderr, "DEV: shuffle -> %d\n", ipad_player_set_shuffle([query[@"on"] intValue]));
+  } else if ([action isEqualToString:@"queue"]) {
+    static char buffer[65536]; ipad_player_queue(buffer, sizeof buffer);
+    fprintf(stderr, "DEV: queue %.400s\n", buffer);
   } else if ([action isEqualToString:@"repeat"]) {
     ipad_player_set_repeat([query[@"mode"] intValue]);
   } else if ([action isEqualToString:@"enqueue"]) {

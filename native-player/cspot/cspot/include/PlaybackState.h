@@ -94,6 +94,12 @@ class PlaybackState {
      * @return std::vector<uint8_t> binary frame data
      */
   std::vector<uint8_t> encodeCurrentFrame(MessageType typ);
+  void setShuffle(bool on);
+  void setRepeat(bool on);
+  bool remoteShuffle();
+  bool remoteRepeat();
+  // Tracks to publish in our state frames (the phone shows this list as "next up").
+  void setOutgoingTracks(std::vector<TrackReference>* tracks);
 
   bool decodeRemoteFrame(std::vector<uint8_t>& data);
   uint64_t currentPositionMs();

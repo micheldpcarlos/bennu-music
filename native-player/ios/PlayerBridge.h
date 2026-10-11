@@ -9,6 +9,7 @@ enum IPadPlayerCommand { IPadTogglePause = 1, IPadPrevious = 2, IPadNext = 3 };
 typedef struct IPadPlayerSnapshot {
   int state, hasTrack, paused, loading, pending;
   int reconnecting, repeat;   // repeat: 0 off, 1 all, 2 one
+  int shuffle;                // the engine's shuffle state (also set from the phone)
   uint32_t positionMs, durationMs;
   uint32_t volume;            // Spotify Connect volume 0..65535 = the iPad's system volume
   char title[256], artist[256], album[256], artwork[512], trackId[128], error[256];
@@ -31,6 +32,9 @@ int ipad_player_command(int command);
 int ipad_player_play_tracks(const char* json);
 int ipad_player_seek(uint32_t positionMs);
 int ipad_player_set_repeat(int mode);
+int ipad_player_set_shuffle(int on);
+// Engine thread: report the queue's real shuffle and repeat so the UI follows the phone.
+void ipad_player_engine_flags(int shuffle, int repeat);
 // json: {"uris":[...]} inserted right after the playing track ("play next").
 int ipad_player_queue_tracks(const char* json);
 // Developer aid: drops the access-point socket so the session's reconnect path runs.
@@ -76,6 +80,9 @@ void setControlHandler(std::function<bool(int)> handler);
 void setPlaybackHandlers(std::function<bool(const std::vector<std::string>&, size_t, const std::string&)> play,
                          std::function<void(uint32_t)> seek);
 void setQueueHandlers(std::function<void(const std::vector<std::string>&)> enqueue, std::function<void(int)> repeat);
+void setShuffleHandler(std::function<void(bool)> handler);
+// Engine thread: the order actually played (after shuffle, play next, phone changes).
+void publishQueue(const std::vector<std::string>& uris, int index);
 void setVolumeHandler(std::function<void(uint32_t)> handler);
 void setDropHandler(std::function<void()> handler);
 // Catalog service: (kind, argument, publish(json, done)). Invoked on a worker thread per request.

@@ -1,4 +1,6 @@
 #include "CDNAudioFile.h"
+#include "BellUtils.h"
+#include <stdexcept>
 
 #include <string.h>          // for memcpy
 #include <functional>        // for __base
@@ -129,14 +131,39 @@ size_t CDNAudioFile::readBytes(uint8_t* dst, size_t bytes) {
       this->enableRequestMargin = false;
     }
 
-    this->httpConnection->get(
-        cdnUrl, {bell::HTTPClient::RangeHeader::range(
-                    requestPosition, requestPosition + HTTP_BUFFER_SIZE - 1)});
-    this->lastRequestPosition = requestPosition;
-    this->lastRequestCapacity = this->httpConnection->contentLength();
-
-    this->httpConnection->stream().read((char*)this->httpBuffer.data(),
-                                        lastRequestCapacity);
+    // A dropped connection used to throw from here straight through libvorbis and abort
+    // the app. Retry on a fresh connection with backoff; give up as end-of-stream.
+    bool fetched = false;
+    for (int attempt = 0; attempt < 4 && !fetched; ++attempt) {
+      try {
+        if (attempt > 0) {
+          CSPOT_LOG(error, "CDN read failed; retrying (%d)", attempt);
+          BELL_SLEEP_MS(1000 * attempt);
+          this->httpConnection = bell::HTTPClient::get(
+              cdnUrl, {bell::HTTPClient::RangeHeader::range(
+                          requestPosition, requestPosition + HTTP_BUFFER_SIZE - 1)});
+        } else {
+          this->httpConnection->get(
+              cdnUrl, {bell::HTTPClient::RangeHeader::range(
+                          requestPosition, requestPosition + HTTP_BUFFER_SIZE - 1)});
+        }
+        size_t capacity = this->httpConnection->contentLength();
+        if (capacity == 0 || capacity > this->httpBuffer.size()) throw std::runtime_error("bad range response");
+        this->httpConnection->stream().read((char*)this->httpBuffer.data(), capacity);
+        if (!this->httpConnection->stream().good()) throw std::runtime_error("short read");
+        this->lastRequestPosition = requestPosition;
+        this->lastRequestCapacity = capacity;
+        fetched = true;
+      } catch (const std::exception& e) {
+        this->lastRequestCapacity = 0;
+      } catch (...) {
+        this->lastRequestCapacity = 0;
+      }
+    }
+    if (!fetched) {
+      CSPOT_LOG(error, "CDN read failed; ending this track");
+      return 0;
+    }
     this->decrypt(this->httpBuffer.data(), lastRequestCapacity,
 
                   this->lastRequestPosition);

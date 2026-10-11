@@ -31,6 +31,7 @@ std::function<void(const std::vector<std::string>&)> enqueueTracks;
 std::function<void(int)> setRepeatMode;
 std::vector<std::string> pendingQueue; int pendingRepeat = -1;
 std::function<void(uint32_t)> setRemoteVolume; long pendingVolume = -1; bool volumeKnown = false;
+std::function<void(bool)> setShuffleMode; int pendingShuffle = -1;
 std::vector<std::string> queueUris; size_t queueIndex = 0; std::string queueContext;
 std::function<void(bool)> discoverableHandler;
 const char* kHiddenMarker = "/var/mobile/Documents/bennu-hidden";
@@ -64,7 +65,7 @@ template <size_t N> void copyText(char (&output)[N], const char* input) {
 void resetHandlersLocked() {
   commands.clear(); control = nullptr; playTracks = nullptr; seekTrack = nullptr;
   pendingPlay = PendingPlay{}; pendingSeek = false; pendingQueue.clear(); pendingRepeat = -1;
-  enqueueTracks = nullptr; setRepeatMode = nullptr; dropHandler = nullptr; setRemoteVolume = nullptr; pendingVolume = -1;
+  enqueueTracks = nullptr; setRepeatMode = nullptr; dropHandler = nullptr; setRemoteVolume = nullptr; pendingVolume = -1; setShuffleMode = nullptr; pendingShuffle = -1;
 }
 bool validTrack(const std::string& uri) {
   return uri.size() == 36 && uri.compare(0, 14, "spotify:track:") == 0 &&
@@ -193,6 +194,17 @@ void ipad_engine_drop_connection(void) {
   { std::lock_guard<std::mutex> lock(bridgeMutex); handler = dropHandler; }
   if (handler) { try { handler(); } catch (...) {} }
 }
+int ipad_player_set_shuffle(int on) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  if (state.state != IPadReady || !setShuffleMode) return 0;
+  pendingShuffle = on ? 1 : 0; state.shuffle = on ? 1 : 0;
+  return 1;
+}
+void ipad_player_engine_flags(int shuffle, int repeat) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  if (pendingShuffle < 0) state.shuffle = shuffle ? 1 : 0;
+  if (pendingRepeat < 0) state.repeat = repeat;
+}
 int ipad_player_set_repeat(int mode) {
   if (mode < 0 || mode > 2) return 0;
   std::lock_guard<std::mutex> lock(bridgeMutex);
@@ -241,6 +253,7 @@ int ipad_player_command(int command) {
   return 1;
 }
 int ipad_player_play_tracks(const char* json) {
+  bool shuffleRequested = false;
   if (!json) return 0;
   PendingPlay play;
   try {
@@ -257,16 +270,15 @@ int ipad_player_play_tracks(const char* json) {
     if (play.index >= play.uris.size()) play.index = 0;
     play.context = document.count("context") && document["context"].is_string() ? document["context"].get<std::string>() : "";
     if (play.context.size() > 200) play.context.clear();
-    if (document.count("shuffle") && document["shuffle"].is_boolean() && document["shuffle"].get<bool>() && play.uris.size() > 1) {
-      std::swap(play.uris[0], play.uris[play.index]);
-      std::shuffle(play.uris.begin() + 1, play.uris.end(), std::mt19937(static_cast<unsigned>(Clock::now().time_since_epoch().count())));
-      play.index = 0;
-    }
+    // Shuffle is applied by the engine after the load, so it can be turned off later with
+    // the original order restored and the phone sees the same order and flag.
+    shuffleRequested = document.count("shuffle") && document["shuffle"].is_boolean() && document["shuffle"].get<bool>();
   } catch (...) { return 0; }
   play.valid = true;
   std::lock_guard<std::mutex> lock(bridgeMutex);
   if (state.state != IPadReady || !playTracks) return 0;
   pendingPlay = std::move(play);
+  pendingShuffle = shuffleRequested ? 1 : 0;
   return 1;
 }
 int ipad_player_seek(uint32_t positionMs) {
@@ -387,6 +399,21 @@ void setQueueHandlers(std::function<void(const std::vector<std::string>&)> enque
   std::lock_guard<std::mutex> lock(bridgeMutex);
   enqueueTracks = std::move(enqueue); setRepeatMode = std::move(repeat);
 }
+void publishQueue(const std::vector<std::string>& uris, int index) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  queueUris.clear();
+  for (const auto& u : uris) {
+    if (u.size() == 36 && u.compare(0, 14, "spotify:track:") == 0) queueUris.push_back(u);
+    else if (u.size() == 36 && u.compare(0, 4, "hex:") == 0) { auto id = ipad_player::base62FromHex(u.substr(4)); if (id.size() == 22) queueUris.push_back("spotify:track:" + id); }
+  }
+  if (queueUris.size() != uris.size()) return;   // references without uris (phone lists): keep what we had
+  queueIndex = index < 0 ? 0 : static_cast<size_t>(index);
+  queueJSON = nlohmann::json{{"uris", queueUris}, {"index", queueIndex}, {"context", queueContext}}.dump(); ++queueRevision;
+}
+void setShuffleHandler(std::function<void(bool)> handler) {
+  std::lock_guard<std::mutex> lock(bridgeMutex);
+  setShuffleMode = std::move(handler);
+}
 void setVolumeHandler(std::function<void(uint32_t)> handler) {
   std::lock_guard<std::mutex> lock(bridgeMutex);
   setRemoteVolume = std::move(handler);
@@ -449,6 +476,9 @@ void dispatchPending() {
     } catch (...) { std::fprintf(stderr, "UI: add to queue failed\n"); }
   }
   if (repeatMode >= 0 && repeatHandler) { try { repeatHandler(repeatMode); } catch (...) {} }
+  int shuffleToSet = -1; std::function<void(bool)> shuffleHandler;
+  { std::lock_guard<std::mutex> lock(bridgeMutex); shuffleToSet = pendingShuffle; pendingShuffle = -1; shuffleHandler = setShuffleMode; }
+  if (shuffleToSet >= 0 && shuffleHandler) { try { shuffleHandler(shuffleToSet != 0); } catch (...) {} }
   long volumeToSend = -1; std::function<void(uint32_t)> volumeHandler;
   { std::lock_guard<std::mutex> lock(bridgeMutex); volumeToSend = pendingVolume; pendingVolume = -1; volumeHandler = setRemoteVolume; }
   if (volumeToSend >= 0 && volumeHandler) { try { volumeHandler((uint32_t)volumeToSend); } catch (...) {} }

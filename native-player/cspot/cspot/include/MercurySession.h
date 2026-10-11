@@ -121,6 +121,10 @@ class MercurySession : public bell::Task, public cspot::Session {
 
   unsigned long long timestampDiff;
   unsigned long long lastPingTimestamp = -1;
+  // Pong is sent 60 s after the ping with a zero payload, like the official clients and
+  // librespot since 2024; an immediate pong echoing the timestamp got the connection dropped.
+  std::atomic<long long> pongDueAtMs{0};
+  void sendPendingPong();
   std::string countryCode = "";
 
   std::mutex isRunningMutex;

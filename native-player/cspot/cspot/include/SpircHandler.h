@@ -56,6 +56,11 @@ class SpircHandler {
   void notifyAudioEnded();
   void updatePositionMs(uint32_t position);
   void setRemoteVolume(int volume);
+  void setShuffle(bool on);
+  bool shuffled();
+  uint64_t queueRevision();
+  std::vector<std::string> trackUris(int& index);
+  int repeatMode();
   void loadTrackFromURI(const std::string& uri);
   // Load a list of track URIs as the play queue, starting at index. contextUri names the
   // album/playlist/collection the list came from (shown to remote controllers).

@@ -112,6 +112,7 @@ JSON entity(const JSON* data) {
   if (type == "playlist") {
     out["type"] = "playlist"; out["name"] = text(at(data, "name"));
     auto owner = text(at(at(at(data, "ownerV2"), "data"), "name"));
+    out["owner"] = owner;
     out["subtitle"] = owner.empty() ? "Playlist" : "Playlist • " + owner;
   } else if (type == "album") {
     out["type"] = "album"; out["name"] = text(at(data, "name"));
@@ -383,8 +384,9 @@ JSON Pathfinder::search(const std::string& textQuery) {
       if (type == "artist") out["artists"].push_back({{"uri", e["uri"]}, {"name", e["name"]}, {"image", e["artwork"]}});
       else if (type == "album") out["albums"].push_back({{"uri", e["uri"]}, {"name", e["name"]}, {"artist", e["artist"]}, {"artwork", e["artwork"]}});
       else if (type == "playlist") {
-        std::string subtitle = e["subtitle"];
-        out["playlists"].push_back({{"uri", e["uri"]}, {"name", e["name"]}, {"owner", subtitle.size() > 11 ? subtitle.substr(11) : ""}, {"artwork", e["artwork"]}});
+        // The owner comes from the entity itself; slicing the "Playlist • owner" subtitle by
+        // bytes cut the bullet's UTF-8 sequence and made every search with playlists fail.
+        out["playlists"].push_back({{"uri", e["uri"]}, {"name", e["name"]}, {"owner", e.value("owner", "")}, {"artwork", e["artwork"]}});
       }
     }
   }
