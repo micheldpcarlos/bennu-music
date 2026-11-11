@@ -2,7 +2,7 @@
 
 <h1 align="center">Bennu Music</h1>
 
-<p align="center">Spotify on your old iPad or iPhone. A native player for jailbroken 32-bit devices stuck on iOS 9.</p>
+<p align="center">Spotify on your old iPad or iPhone. A native player for jailbroken 32-bit devices stuck on iOS 9 (released in 2015)</p>
 
 <p align="center">
   <a href="https://github.com/micheldpcarlos/bennu-music/releases/latest"><img src="https://img.shields.io/github/v/release/micheldpcarlos/bennu-music?label=release&color=1DB954" alt="Latest release"></a>
